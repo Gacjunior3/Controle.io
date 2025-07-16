@@ -494,9 +494,12 @@
             newRow.className = 'edit-row';
             newRow.dataset.id = 'new-' + Date.now();
             
-            // Obtém a data atual
+            // Obtém a data atual no formato YYYY-MM-DD
             const today = new Date();
-            const formattedDate = today.toISOString().split('T')[0];
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
             
             newRow.innerHTML = `
                 <td><input type="date" value="${formattedDate}"></td>
@@ -563,9 +566,12 @@
                 return;
             }
             
+            // Ajuste para a data - pega o valor exato do input sem conversão
+            const dataInput = inputs[0].value;
+            
             // Cria objeto com os dados da entrega
             const entrega = {
-                data: inputs[0].value,
+                data: dataInput, // Usa o valor direto do input
                 vendedor: inputs[1].value,
                 cliente: inputs[2].value,
                 telefoneCliente: inputs[3].value.replace(/\D/g, ''),
@@ -611,9 +617,9 @@
             // Salva o conteúdo original para possível cancelamento
             linha.dataset.originalContent = linha.innerHTML;
             
-            // Converte a data para o formato do input
-            const dataInput = celulas[0].textContent;
-            const [dia, mes, ano] = dataInput.split('/');
+            // Pega a data no formato DD/MM/YYYY e converte para YYYY-MM-DD
+            const dataDisplay = celulas[0].textContent;
+            const [dia, mes, ano] = dataDisplay.split('/');
             const dataFormatada = `${ano}-${mes}-${dia}`;
             
             // Converte o prazo para o formato do input (se existir)
@@ -753,13 +759,15 @@
                 
                 Object.keys(entregas).forEach(id => {
                     const entrega = entregas[id];
-                    const data = new Date(entrega.data);
-                    const dataFormatada = data.toLocaleDateString('pt-BR');
+                    
+                    // Formata a data diretamente do valor salvo (formato YYYY-MM-DD)
+                    const [ano, mes, dia] = entrega.data.split('-');
+                    const dataFormatada = `${dia}/${mes}/${ano}`;
                     
                     let prazoFormatado = '-';
                     if (entrega.prazo) {
-                        const prazo = new Date(entrega.prazo);
-                        prazoFormatado = prazo.toLocaleDateString('pt-BR');
+                        const [anoP, mesP, diaP] = entrega.prazo.split('-');
+                        prazoFormatado = `${diaP}/${mesP}/${anoP}`;
                     }
                     
                     const row = document.createElement('tr');
