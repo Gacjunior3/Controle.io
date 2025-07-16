@@ -4,344 +4,321 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acompanhamento de Entregas</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --color-coletando: #0077b6;
-            --color-transito: #ffaa00;
-            --color-parado: #dc3545;
-            --color-entregue: #28a745;
-            --color-primary: #007bff;
-            --color-success: #28a745;
-            --color-danger: #dc3545;
-            --color-warning: #ffc107;
-            --color-secondary: #6c757d;
-            --color-light: #f8f9fa;
-            --color-dark: #343a40;
-            --color-white: #ffffff;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f8f9fa;
-            color: #333;
-            line-height: 1.6;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
         }
         
         h1 {
-            color: #2c3e50;
+            color: #333;
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-            font-weight: 600;
+            margin-bottom: 20px;
         }
         
         .controls {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
-            margin-bottom: 25px;
             align-items: flex-end;
-            background-color: var(--color-white);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 30px;
         }
         
         .filter-group {
             display: flex;
             flex-direction: column;
             min-width: 150px;
-            flex-grow: 1;
+        }
+        
+        .date-filters {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        
+        button {
+            padding: 8px 15px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .filter-btn {
+            background-color: #4CAF50;
+        }
+        
+        .filter-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .export-btn {
+            background-color: #2196F3;
+        }
+        
+        .export-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        .load-btn {
+            background-color: #ff9800;
+        }
+        
+        .load-btn:hover {
+            background-color: #e68a00;
+        }
+        
+        .add-btn {
+            background-color: #9C27B0;
+        }
+        
+        .add-btn:hover {
+            background-color: #7B1FA2;
+        }
+        
+        .save-btn {
+            background-color: #4CAF50;
+        }
+        
+        .edit-btn {
+            background-color: #2196F3;
+        }
+        
+        .delete-btn {
+            background-color: #f44336;
+        }
+        
+        .cancel-btn {
+            background-color: #ff9800;
+            color: #333;
+        }
+        
+        select, input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
         
         table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 20px;
-            font-size: 14px;
-            background-color: var(--color-white);
-            box-shadow: var(--shadow-sm);
-            border-radius: 10px;
-            overflow: hidden;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
         th, td {
-            padding: 12px 15px;
+            border: 1px solid #ddd;
+            padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
         }
         
         th {
-            background-color: #f1f5f9;
-            position: sticky;
-            top: 0;
-            font-weight: 600;
-            color: #2c3e50;
-            text-transform: uppercase;
-            font-size: 13px;
-            letter-spacing: 0.5px;
+            background-color: #f2f2f2;
+            font-weight: bold;
         }
         
         tr:nth-child(even) {
-            background-color: #f8fafc;
+            background-color: #f9f9f9;
         }
         
-        tr:hover {
-            background-color: #f1f5f9;
-            transition: var(--transition);
-        }
-        
-        /* Status Styles - More Vibrant */
         .status-coletando {
-            background-color: rgba(0, 119, 182, 0.15);
-            color: var(--color-coletando);
-            font-weight: 600;
-            border-left: 4px solid var(--color-coletando);
+            color: #0077b6;
+            font-weight: bold;
         }
         
         .status-transito {
-            background-color: rgba(255, 170, 0, 0.15);
-            color: var(--color-transito);
-            font-weight: 600;
-            border-left: 4px solid var(--color-transito);
+            color: #ff9800;
+            font-weight: bold;
         }
         
         .status-parado {
-            background-color: rgba(220, 53, 69, 0.15);
-            color: var(--color-parado);
-            font-weight: 600;
-            border-left: 4px solid var(--color-parado);
+            color: #f44336;
+            font-weight: bold;
         }
         
         .status-entregue {
-            background-color: rgba(40, 167, 69, 0.15);
-            color: var(--color-entregue);
-            font-weight: 600;
-            border-left: 4px solid var(--color-entregue);
+            color: #4CAF50;
+            font-weight: bold;
         }
         
-        .whatsapp-number {
+        .whatsapp-link {
             color: #25D366;
             text-decoration: none;
-            cursor: pointer;
-            font-weight: 600;
+            font-weight: bold;
             display: inline-block;
             padding: 2px 5px;
             border-radius: 3px;
-            transition: var(--transition);
         }
         
-        .whatsapp-number:hover {
+        .whatsapp-link:hover {
             background-color: rgba(37, 211, 102, 0.1);
-            text-decoration: none;
-        }
-        
-        .action-btn {
-            background-color: var(--color-primary);
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            margin: 2px;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
-            font-weight: 500;
-        }
-        
-        .action-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .add-btn {
-            background-color: var(--color-success);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
-            min-width: 150px;
-        }
-        
-        .add-btn:hover {
-            background-color: #218838;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .reset-btn {
-            background-color: var(--color-secondary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
-            min-width: 150px;
-        }
-        
-        .reset-btn:hover {
-            background-color: #5a6268;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        .export-btn {
-            background-color: #6f42c1;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
-            min-width: 150px;
-            font-weight: 600;
-        }
-        
-        .export-btn:hover {
-            background-color: #5a32a3;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-        
-        select, input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            width: 100%;
-            box-sizing: border-box;
-            transition: var(--transition);
-            font-size: 14px;
-        }
-        
-        select:focus, input:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-        
-        label {
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 13px;
-            color: #4a5568;
-        }
-        
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(0,0,0,.1);
-            border-radius: 50%;
-            border-top-color: var(--color-primary);
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .required-field::after {
-            content: " *";
-            color: var(--color-danger);
-        }
-        
-        .delete-btn {
-            background-color: var(--color-danger);
-        }
-        
-        .delete-btn:hover {
-            background-color: #c82333;
-        }
-        
-        .cancel-btn {
-            background-color: var(--color-warning);
-            color: #212529;
-        }
-        
-        .cancel-btn:hover {
-            background-color: #e0a800;
         }
         
         .copy-notification {
             position: fixed;
             top: 20px;
             right: 20px;
-            background-color: var(--color-success);
+            background-color: #4CAF50;
             color: white;
             padding: 12px 24px;
             border-radius: 6px;
-            box-shadow: var(--shadow-lg);
             display: none;
             z-index: 1000;
-            font-weight: 500;
-            animation: fadeIn 0.3s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .edit-row {
+            background-color: #fffde7 !important;
         }
         
-        .date-input {
-            max-width: 150px;
+        input[type="text"], input[type="date"], select {
+            width: 100%;
+            box-sizing: border-box;
         }
         
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .filter-group {
-                width: 100%;
-            }
-            
-            table {
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-            
-            .add-btn, .reset-btn, .export-btn {
-                width: 100%;
-            }
+        input[type="password"] {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .action-buttons button {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        .status-select {
+            border: none;
+            background: transparent;
+            font-weight: bold;
+            color: inherit;
+            cursor: pointer;
+        }
+        
+        .status-select:focus {
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+        }
+
+        /* Estilos para as abas */
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f2f2f2;
+            border-right: 1px solid #ddd;
+            transition: background-color 0.3s;
+        }
+
+        .tab:last-child {
+            border-right: none;
+        }
+
+        .tab.active {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #e6e6e6;
+        }
+
+        /* Modal para senha */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+            gap: 10px;
         }
     </style>
 </head>
 <body>
     <div class="copy-notification" id="copyNotification">Número copiado!</div>
     
+    <!-- Modal para senha -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3>Digite a senha para excluir</h3>
+            <input type="password" id="passwordInput" placeholder="Senha" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="cancelDelete()">Cancelar</button>
+                <button class="save-btn" onclick="confirmDelete()">Confirmar</button>
+            </div>
+            <p id="passwordError" style="color: red; display: none;">Senha incorreta!</p>
+        </div>
+    </div>
+    
     <h1>📦 Acompanhamento de Entregas</h1>
+    
+    <!-- Abas para filtros rápidos -->
+    <div class="tabs">
+        <div class="tab active" onclick="filtrarPorAba('todos')">Todos</div>
+        <div class="tab" onclick="filtrarPorAba('coletando')">Coletando</div>
+        <div class="tab" onclick="filtrarPorAba('transito')">Em Trânsito</div>
+        <div class="tab" onclick="filtrarPorAba('parado')">Parado</div>
+        <div class="tab" onclick="filtrarPorAba('entregue')">Entregue</div>
+    </div>
     
     <div class="controls">
         <div class="filter-group">
-            <label for="searchInput">🔍 Pesquisa Geral</label>
-            <input type="text" id="searchInput" placeholder="Digite para filtrar...">
+            <label for="vendedorFilter">Vendedor</label>
+            <select id="vendedorFilter">
+                <option value="">Todos</option>
+                <option value="MARCIA">MARCIA</option>
+                <option value="MARIANE">MARIANE</option>
+                <option value="JEISE">JEISE</option>
+                <option value="MONICA">MONICA</option>
+                <option value="ANA">ANA</option>
+                <option value="MARIVAL">MARIVAL</option>
+                <option value="GENIVALDO">GENIVALDO</option>
+            </select>
         </div>
         
         <div class="filter-group">
-            <label for="statusFilter">🔄 Status</label>
+            <label for="statusFilter">Status</label>
             <select id="statusFilter">
                 <option value="">Todos</option>
                 <option value="coletando">Coletando</option>
@@ -351,73 +328,73 @@
             </select>
         </div>
         
-        <div class="filter-group">
-            <label for="driverFilter">🚚 Motorista</label>
-            <select id="driverFilter">
-                <option value="">Todos</option>
-            </select>
+        <div class="date-filters">
+            <div class="filter-group">
+                <label for="mesFilter">Mês</label>
+                <select id="mesFilter">
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="anoFilter">Ano</label>
+                <select id="anoFilter">
+                    <option value="2023">2023</option>
+                    <option value="2024" selected>2024</option>
+                    <option value="2025">2025</option>
+                </select>
+            </div>
+            
+            <button class="load-btn" onclick="carregarMes()">Carregar Mês</button>
         </div>
         
-        <div class="filter-group">
-            <label for="collaboratorFilter">👥 Colaborador</label>
-            <select id="collaboratorFilter">
-                <option value="">Todos</option>
-                <option value="MARCIA">MARCIA</option>
-                <option value="MARIANE">MARIANE</option>
-                <option value="JEISE">JEISE</option>
-                <option value="MONICA">MONICA</option>
-                <option value="MARIVAL">MARIVAL</option>
-                <option value="GENIVALDO">GENIVALDO</option>
-            </select>
-        </div>
-        
-        <div class="filter-group">
-            <label for="monthFilter">📅 Mês</label>
-            <select id="monthFilter">
-                <option value="all">Todos os meses</option>
-            </select>
-        </div>
-        
-        <button class="add-btn" id="addButton">➕ Adicionar Entrega</button>
-        <button class="reset-btn" onclick="resetFilters()">🧹 Limpar Filtros</button>
-        <button class="export-btn" onclick="exportToExcel()">📤 Exportar Excel</button>
-        <span id="loadingIndicator" style="display:none;"><span class="loading"></span> Salvando...</span>
+        <button class="add-btn" onclick="adicionarNovaLinha()">Adicionar Entrega</button>
+        <button class="export-btn" onclick="exportarExcel()">Exportar para Excel</button>
     </div>
     
-    <table id="deliveryTable">
+    <table id="tabelaEntregas">
         <thead>
             <tr>
-                <th>Data</th>
-                <th>Cliente</th>
-                <th>Responsável</th>
-                <th>WhatsApp</th>
-                <th>Motorista</th>
-                <th>WhatsApp</th>
-                <th>Recebedor</th>
-                <th>WhatsApp</th>
-                <th>Colaborador</th>
-                <th>Origem</th>
-                <th>Destino</th>
-                <th>Valor Frete</th>
-                <th>Valor Empresa</th>
-                <th>Status</th>
-                <th>Observação</th>
-                <th>Ações</th>
+                <th>DATA</th>
+                <th>VENDEDOR</th>
+                <th>CLIENTE</th>
+                <th>TELEFONE CLIENTE</th>
+                <th>MOTORISTA</th>
+                <th>TELEFONE MOTORISTA</th>
+                <th>ORIGEM</th>
+                <th>DESTINO</th>
+                <th>FRETE EMPRESA</th>
+                <th>FRETE MOTORISTA</th>
+                <th>STATUS</th>
+                <th>PRAZO</th>
+                <th>OBSERVAÇÃO</th>
+                <th>AÇÕES</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            <!-- Os dados serão carregados dinamicamente pelo Firebase -->
+        <tbody id="corpoTabela">
+            <!-- Dados serão carregados do Firebase -->
         </tbody>
     </table>
 
     <script>
-        // Configuração do Firebase
+        // Configuração do Firebase (substitua com suas credenciais)
         const firebaseConfig = {
             apiKey: "AIzaSyAG60_tih4qVGIlT1bs_kt-_E_77xw-XX8",
             authDomain: "acompanhamento-transportes.firebaseapp.com",
             databaseURL: "https://acompanhamento-transportes-default-rtdb.firebaseio.com",
             projectId: "acompanhamento-transportes",
-            storageBucket: "acompanhamento-transportes.appspot.com",
+            storageBucket: "acompanhamento-transportes.firebasestorage.app",
             messagingSenderId: "471884949849",
             appId: "1:471884949849:web:8a14680219698dddc90448"
         };
@@ -425,662 +402,495 @@
         // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const deliveriesRef = database.ref('deliveries');
-
-        // Variáveis globais
-        let drivers = [];
-        let collaborators = ["MARCIA", "MARIANE", "JEISE", "MONICA", "MARIVAL", "GENIVALDO"];
-        let deliveries = {};
-        let deliveriesByMonth = {};
-        let currentMonthFilter = 'all';
-
-        // Função para exportar para Excel
-        function exportToExcel() {
-            // Obter os dados visíveis na tabela (já filtrados)
-            const table = document.getElementById('deliveryTable');
-            const rows = Array.from(table.querySelectorAll('tbody tr')).filter(tr => tr.style.display !== 'none');
-            
-            if (rows.length === 0) {
-                alert('Nenhum dado para exportar!');
-                return;
+        const entregasRef = database.ref('entregas');
+        
+        // Variável para controlar o ID das entregas
+        let proximoId = 1;
+        
+        // Variáveis para controle de exclusão
+        let currentDeleteId = null;
+        const SENHA_EXCLUSAO = "12345"; // Defina sua senha aqui
+        
+        // Função para mostrar o modal de senha
+        function showPasswordModal(id) {
+            currentDeleteId = id;
+            document.getElementById('passwordModal').style.display = 'block';
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('passwordError').style.display = 'none';
+            document.getElementById('passwordInput').focus();
+        }
+        
+        // Função para cancelar a exclusão
+        function cancelDelete() {
+            document.getElementById('passwordModal').style.display = 'none';
+            currentDeleteId = null;
+        }
+        
+        // Função para confirmar a exclusão após verificar a senha
+        function confirmDelete() {
+            const senha = document.getElementById('passwordInput').value;
+            if (senha === SENHA_EXCLUSAO) {
+                excluirLinhaConfirmada(currentDeleteId);
+                document.getElementById('passwordModal').style.display = 'none';
+                currentDeleteId = null;
+            } else {
+                document.getElementById('passwordError').style.display = 'block';
             }
-            
-            // Preparar os dados para exportação
-            const data = [];
-            
-            // Adicionar cabeçalhos
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
-            data.push(headers.slice(0, -1)); // Remove a coluna "Ações"
-            
-            // Adicionar linhas de dados
-            rows.forEach(row => {
-                const cells = Array.from(row.querySelectorAll('td'));
-                const rowData = cells.map(cell => {
-                    // Para células com inputs (durante edição)
-                    if (cell.querySelector('input')) {
-                        return cell.querySelector('input').value;
-                    }
-                    // Para células com selects (durante edição)
-                    if (cell.querySelector('select')) {
-                        return cell.querySelector('select').value;
-                    }
-                    // Para células normais
-                    return cell.textContent.trim();
+        }
+        
+        // Função para excluir a linha após confirmação da senha
+        function excluirLinhaConfirmada(id) {
+            entregasRef.child(id).remove()
+                .catch(error => {
+                    console.error("Erro ao excluir:", error);
+                    alert("Erro ao excluir a entrega. Por favor, tente novamente.");
                 });
-                data.push(rowData.slice(0, -1)); // Remove a coluna "Ações"
+        }
+        
+        // Função para filtrar por aba
+        function filtrarPorAba(aba) {
+            // Atualiza a aba ativa
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.toLowerCase().includes(aba) || 
+                    (aba === 'todos' && tab.textContent === 'Todos')) {
+                    tab.classList.add('active');
+                }
             });
-            
-            // Criar uma planilha de trabalho
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            
-            // Criar um livro de trabalho e adicionar a planilha
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Entregas");
-            
-            // Gerar o arquivo Excel e fazer o download
-            const date = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(wb, `entregas_${date}.xlsx`);
-        }
 
-        // Função para mostrar/ocultar loading
-        function showLoading(show) {
-            document.getElementById('loadingIndicator').style.display = show ? 'inline-block' : 'none';
-        }
-
-        // Função para mostrar notificação de cópia
-        function showCopyNotification() {
-            const notification = document.getElementById('copyNotification');
-            notification.style.display = 'block';
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 2000);
-        }
-
-        // Função para formatar data
-        function formatDate(timestamp) {
-            if (!timestamp) return '-';
-            const date = new Date(timestamp);
-            // Ajuste para o fuso horário brasileiro
-            const adjustedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-            return adjustedDate.toLocaleDateString('pt-BR');
-        }
-
-        // Função para extrair o mês/ano da data
-        function getMonthYear(timestamp) {
-            if (!timestamp) return null;
-            const date = new Date(timestamp);
-            // Ajuste para o fuso horário brasileiro
-            const adjustedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-            const month = adjustedDate.getMonth() + 1; // Janeiro é 0
-            const year = adjustedDate.getFullYear();
-            return `${year}-${month.toString().padStart(2, '0')}`;
-        }
-
-        // Função para obter o nome do mês
-        function getMonthName(monthYear) {
-            if (!monthYear) return 'Sem data';
-            const [year, month] = monthYear.split('-');
-            const date = new Date(year, month-1, 1);
-            return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-        }
-
-        // Função para atualizar os filtros de mês
-        function updateMonthFilters() {
-            const monthFilter = document.getElementById('monthFilter');
-            
-            // Limpa o dropdown mantendo apenas a opção padrão
-            monthFilter.innerHTML = '<option value="all">Todos os meses</option>';
-            
-            // Obtém o mês atual corretamente
-            const now = new Date();
-            const currentMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-            
-            // Cria um conjunto de todos os meses presentes nos dados + últimos 12 meses
-            const allMonths = new Set();
-            
-            // Adiciona meses existentes nos dados
-            Object.keys(deliveriesByMonth).forEach(month => {
-                if (month) allMonths.add(month);
-            });
-            
-            // Garante que os últimos 12 meses estejam na lista
-            for (let i = 0; i < 12; i++) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-                allMonths.add(month);
+            // Atualiza o filtro de status
+            const statusFilter = document.getElementById('statusFilter');
+            if (aba === 'todos') {
+                statusFilter.value = '';
+            } else {
+                statusFilter.value = aba;
             }
 
-            // Converte para array e ordena do mais recente para o mais antigo
-            const sortedMonths = Array.from(allMonths).sort((a, b) => b.localeCompare(a));
-            
-            // Preenche o dropdown
-            sortedMonths.forEach(month => {
-                const count = deliveriesByMonth[month] ? deliveriesByMonth[month].length : 0;
-                const option = document.createElement('option');
-                option.value = month;
-                option.textContent = `${getMonthName(month)} (${count} entregas)`;
-                monthFilter.appendChild(option);
-            });
-
-            // Mantém a seleção atual
-            if (currentMonthFilter !== 'all') {
-                monthFilter.value = currentMonthFilter;
-            }
+            // Aplica o filtro
+            filtrarTabela();
         }
-
-        // Função para adicionar nova linha de entrega - CORRIGIDA
-        function addNewRow() {
-            const tableBody = document.getElementById('tableBody');
+        
+        // Função para copiar número para área de transferência
+        function copiarNumero(numero) {
+            navigator.clipboard.writeText(numero).then(() => {
+                const notification = document.getElementById('copyNotification');
+                notification.style.display = 'block';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                console.error('Erro ao copiar número: ', err);
+                alert('Não foi possível copiar o número. Por favor, copie manualmente.');
+            });
+            return false; // Evita que o link siga o href
+        }
+        
+        // Função para adicionar nova linha editável
+        function adicionarNovaLinha() {
+            const tabela = document.getElementById('corpoTabela');
+            
+            // Cria uma nova linha com campos editáveis
             const newRow = document.createElement('tr');
+            newRow.className = 'edit-row';
+            newRow.dataset.id = 'new-' + Date.now();
             
-            // Cria um ID temporário único
-            const tempId = 'temp-' + Date.now();
-            newRow.setAttribute('data-id', tempId);
+            // Obtém a data atual
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
             
             newRow.innerHTML = `
-                <td><input type="date" class="date-input" id="newDate-${tempId}"></td>
-                <td><input type="text" id="newClient-${tempId}" placeholder="Nome do Cliente" class="required-field"></td>
-                <td><input type="text" id="newResponsible-${tempId}" placeholder="Nome do Responsável" class="required-field"></td>
-                <td><input type="text" id="newResponsibleWhatsapp-${tempId}" placeholder="WhatsApp (DDD+Número)" class="required-field"></td>
-                <td><input type="text" id="newDriver-${tempId}" placeholder="Nome Motorista" class="required-field"></td>
-                <td><input type="text" id="newDriverWhatsapp-${tempId}" placeholder="WhatsApp (DDD+Número)" class="required-field"></td>
-                <td><input type="text" id="newReceiver-${tempId}" placeholder="Nome do Recebedor" class="required-field"></td>
-                <td><input type="text" id="newReceiverWhatsapp-${tempId}" placeholder="WhatsApp (DDD+Número)" class="required-field"></td>
+                <td><input type="date" value="${formattedDate}"></td>
                 <td>
-                    <select id="newCollaborator-${tempId}" class="required-field">
-                        <option value="">Selecione</option>
-                        ${collaborators.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    <select>
+                        <option value="MARCIA">MARCIA</option>
+                        <option value="MARIANE">MARIANE</option>
+                        <option value="JEISE">JEISE</option>
+                        <option value="MONICA">MONICA</option>
+                        <option value="ANA">ANA</option>
+                        <option value="MARIVAL">MARIVAL</option>
+                        <option value="GENIVALDO">GENIVALDO</option>
                     </select>
                 </td>
-                <td><input type="text" id="newOrigin-${tempId}" placeholder="Cidade/UF Origem" class="required-field"></td>
-                <td><input type="text" id="newDestination-${tempId}" placeholder="Cidade/UF Destino" class="required-field"></td>
-                <td><input type="text" id="newFreightValue-${tempId}" placeholder="Valor Frete (ex: 150,00)"></td>
-                <td><input type="text" id="newCompanyValue-${tempId}" placeholder="Valor Empresa (ex: 100,00)"></td>
+                <td><input type="text" placeholder="Nome do cliente"></td>
+                <td><input type="text" placeholder="(XX) XXXXX-XXXX"></td>
+                <td><input type="text" placeholder="Nome do motorista"></td>
+                <td><input type="text" placeholder="(XX) XXXXX-XXXX"></td>
+                <td><input type="text" placeholder="Cidade/UF"></td>
+                <td><input type="text" placeholder="Cidade/UF"></td>
+                <td><input type="text" placeholder="R$ 0,00"></td>
+                <td><input type="text" placeholder="R$ 0,00"></td>
                 <td>
-                    <select id="newStatus-${tempId}" class="required-field">
+                    <select>
                         <option value="coletando">Coletando</option>
                         <option value="transito">Em trânsito</option>
                         <option value="parado">Parado</option>
                         <option value="entregue">Entregue</option>
                     </select>
                 </td>
-                <td><input type="text" id="newObservation-${tempId}" placeholder="Observação"></td>
-                <td>
-                    <button class="action-btn" onclick="saveNewRow('${tempId}')">Salvar</button>
-                    <button class="action-btn cancel-btn" onclick="cancelAdd('${tempId}')">Cancelar</button>
+                <td><input type="date"></td>
+                <td><input type="text" placeholder="Observações"></td>
+                <td class="action-buttons">
+                    <button class="save-btn" onclick="salvarLinha(this)">Salvar</button>
+                    <button class="cancel-btn" onclick="cancelarEdicao(this)">Cancelar</button>
                 </td>
             `;
             
-            // Define a data atual como padrão
-            const today = new Date().toISOString().split('T')[0];
-            newRow.querySelector(`#newDate-${tempId}`).value = today;
+            // Adiciona máscara aos campos de telefone
+            newRow.querySelectorAll('input[type="text"]').forEach(input => {
+                if (input.placeholder.includes('(XX)')) {
+                    input.addEventListener('input', formatarTelefoneInput);
+                } else if (input.placeholder.startsWith('R$')) {
+                    input.addEventListener('input', formatarMoedaInput);
+                }
+            });
             
-            tableBody.prepend(newRow);
+            // Adiciona a nova linha no início da tabela
+            tabela.insertBefore(newRow, tabela.firstChild);
             
             // Foca no primeiro campo
-            newRow.querySelector(`#newClient-${tempId}`).focus();
+            newRow.querySelector('input').focus();
         }
-
-        // Função para salvar nova linha - CORRIGIDA
-        function saveNewRow(tempId) {
-            const row = document.querySelector(`tr[data-id="${tempId}"]`);
-            if (!row) return;
+        
+        // Função para salvar uma linha nova ou editada
+        function salvarLinha(botao) {
+            const linha = botao.closest('tr');
+            const inputs = linha.querySelectorAll('input, select');
+            const id = linha.dataset.id;
             
-            // Obtém todos os valores dos campos
-            const deliveryData = {
-                clientName: row.querySelector(`#newClient-${tempId}`).value.trim(),
-                responsibleName: row.querySelector(`#newResponsible-${tempId}`).value.trim(),
-                responsibleWhatsapp: row.querySelector(`#newResponsibleWhatsapp-${tempId}`).value.trim(),
-                driverName: row.querySelector(`#newDriver-${tempId}`).value.trim(),
-                driverWhatsapp: row.querySelector(`#newDriverWhatsapp-${tempId}`).value.trim(),
-                receiverName: row.querySelector(`#newReceiver-${tempId}`).value.trim(),
-                receiverWhatsapp: row.querySelector(`#newReceiverWhatsapp-${tempId}`).value.trim(),
-                collaborator: row.querySelector(`#newCollaborator-${tempId}`).value,
-                origin: row.querySelector(`#newOrigin-${tempId}`).value.trim(),
-                destination: row.querySelector(`#newDestination-${tempId}`).value.trim(),
-                freightValue: row.querySelector(`#newFreightValue-${tempId}`).value.trim(),
-                companyValue: row.querySelector(`#newCompanyValue-${tempId}`).value.trim(),
-                status: row.querySelector(`#newStatus-${tempId}`).value,
-                observation: row.querySelector(`#newObservation-${tempId}`)?.value.trim() || '',
-                createdAt: new Date(row.querySelector(`#newDate-${tempId}`).value).getTime() || Date.now()
-            };
-            
-            // Validação dos campos obrigatórios
-            const requiredFields = [
-                {field: 'clientName', name: 'Cliente'},
-                {field: 'responsibleName', name: 'Responsável'},
-                {field: 'responsibleWhatsapp', name: 'WhatsApp do Responsável'},
-                {field: 'driverName', name: 'Motorista'},
-                {field: 'driverWhatsapp', name: 'WhatsApp do Motorista'},
-                {field: 'receiverName', name: 'Recebedor'},
-                {field: 'receiverWhatsapp', name: 'WhatsApp do Recebedor'},
-                {field: 'collaborator', name: 'Colaborador'},
-                {field: 'origin', name: 'Origem'},
-                {field: 'destination', name: 'Destino'}
-            ];
-            
-            const missingFields = requiredFields.filter(f => !deliveryData[f.field]);
-            
-            if (missingFields.length > 0) {
-                alert(`Por favor, preencha os seguintes campos obrigatórios:\n${missingFields.map(f => f.name).join('\n')}`);
+            // Validação básica
+            if (!inputs[0].value || !inputs[2].value || !inputs[3].value || !inputs[4].value || !inputs[5].value) {
+                alert('Por favor, preencha os campos obrigatórios: Data, Cliente, Telefone Cliente, Motorista e Telefone Motorista');
                 return;
             }
             
-            // Valida números de WhatsApp
-            const whatsappFields = [
-                {field: 'responsibleWhatsapp', name: 'WhatsApp do Responsável'},
-                {field: 'driverWhatsapp', name: 'WhatsApp do Motorista'},
-                {field: 'receiverWhatsapp', name: 'WhatsApp do Recebedor'}
-            ];
-            
-            for (const field of whatsappFields) {
-                const number = deliveryData[field.field].replace(/\D/g, '');
-                if (number.length < 10 || number.length > 11) {
-                    alert(`${field.name} inválido! Deve conter DDD + número (10 ou 11 dígitos)`);
-                    return;
-                }
-                deliveryData[field.field] = number;
-            }
-            
-            // Formata os valores monetários
-            if (deliveryData.freightValue) {
-                deliveryData.freightValue = parseFloat(deliveryData.freightValue.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-            } else {
-                deliveryData.freightValue = 0;
-            }
-            
-            if (deliveryData.companyValue) {
-                deliveryData.companyValue = parseFloat(deliveryData.companyValue.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-            } else {
-                deliveryData.companyValue = 0;
-            }
-            
-            showLoading(true);
+            // Cria objeto com os dados da entrega
+            const entrega = {
+                data: inputs[0].value,
+                vendedor: inputs[1].value,
+                cliente: inputs[2].value,
+                telefoneCliente: inputs[3].value.replace(/\D/g, ''),
+                motorista: inputs[4].value,
+                telefoneMotorista: inputs[5].value.replace(/\D/g, ''),
+                origem: inputs[6].value,
+                destino: inputs[7].value,
+                freteEmpresa: inputs[8].value ? parseFloat(inputs[8].value.replace(/[^\d,]/g, '').replace(',', '.')) : 0,
+                freteMotorista: inputs[9].value ? parseFloat(inputs[9].value.replace(/[^\d,]/g, '').replace(',', '.')) : 0,
+                status: inputs[10].value,
+                prazo: inputs[11].value || '',
+                observacao: inputs[12].value || '',
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
             
             // Salva no Firebase
-            deliveriesRef.push(deliveryData)
-                .then(() => {
-                    showLoading(false);
-                    row.remove();
-                    window.scrollTo(0, 0); // Rolagem para o topo
-                })
-                .catch(error => {
-                    console.error("Erro ao salvar entrega:", error);
-                    showLoading(false);
-                    alert("Erro ao salvar os dados. Por favor, tente novamente.");
-                });
-        }
-
-        // Função para cancelar a adição
-        function cancelAdd(tempId) {
-            const row = document.querySelector(`tr[data-id="${tempId}"]`);
-            if (row) row.remove();
-        }
-
-        // Função para aplicar todos os filtros combinados
-        function applyCombinedFilter() {
-            const searchText = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-            const driverFilter = document.getElementById('driverFilter').value;
-            const collaboratorFilter = document.getElementById('collaboratorFilter').value;
-            
-            const rows = document.getElementById('tableBody').getElementsByTagName('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                const rowId = rows[i].getAttribute('data-id');
-                const delivery = deliveries[rowId];
-                if (!delivery) continue;
-                
-                let shouldShow = true;
-                
-                // Filtro por mês
-                if (currentMonthFilter !== 'all') {
-                    const deliveryMonth = getMonthYear(delivery.createdAt || delivery.updatedAt);
-                    shouldShow = deliveryMonth === currentMonthFilter;
-                }
-                
-                // Filtro de texto geral
-                if (searchText && shouldShow) {
-                    const searchFields = [
-                        delivery.clientName || '',
-                        delivery.responsibleName || '',
-                        delivery.driverName || '',
-                        delivery.receiverName || '',
-                        delivery.collaborator || '',
-                        delivery.origin || '',
-                        delivery.destination || '',
-                        delivery.observation || '',
-                        getStatusText(delivery.status || '')
-                    ];
-                    
-                    shouldShow = searchFields.some(field => 
-                        field.toLowerCase().includes(searchText)
-                    );
-                }
-                
-                // Filtro por status
-                if (statusFilter && shouldShow) {
-                    shouldShow = delivery.status === statusFilter;
-                }
-                
-                // Filtro por motorista
-                if (driverFilter && shouldShow) {
-                    shouldShow = delivery.driverName === driverFilter;
-                }
-                
-                // Filtro por colaborador
-                if (collaboratorFilter && shouldShow) {
-                    shouldShow = delivery.collaborator === collaboratorFilter;
-                }
-                
-                rows[i].style.display = shouldShow ? '' : 'none';
-            }
-        }
-
-        // Função para carregar os dados do Firebase
-        function loadData() {
-            showLoading(true);
-            deliveriesRef.on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                deliveries = data;
-                deliveriesByMonth = {};
-                
-                // Limpa a tabela
-                document.getElementById('tableBody').innerHTML = '';
-                
-                // Processa cada entrega
-                Object.keys(data).forEach(key => {
-                    const delivery = data[key];
-                    if (!delivery) return;
-                    
-                    // Adiciona à tabela
-                    addDeliveryToTable(key, delivery);
-                    
-                    // Agrupa por mês/ano
-                    const monthYear = getMonthYear(delivery.createdAt || delivery.updatedAt);
-                    if (monthYear) {
-                        if (!deliveriesByMonth[monthYear]) {
-                            deliveriesByMonth[monthYear] = [];
-                        }
-                        deliveriesByMonth[monthYear].push(delivery);
-                    }
-                });
-                
-                // Atualiza os filtros
-                updateMonthFilters();
-                updateDriverFilter();
-                showLoading(false);
-            }, (error) => {
-                console.error("Erro ao carregar dados:", error);
-                showLoading(false);
-                alert("Erro ao carregar os dados. Por favor, recarregue a página.");
-            });
-        }
-
-        // Função para adicionar uma entrega à tabela
-        function addDeliveryToTable(id, delivery) {
-            const tableBody = document.getElementById('tableBody');
-            const row = document.createElement('tr');
-            row.setAttribute('data-id', id);
-            
-            // Função para formatar número de WhatsApp
-            const formatWhatsapp = (number) => {
-                if (!number) return '-';
-                const num = number.replace(/\D/g, '');
-                return `<span class="whatsapp-number" title="Clique para copiar">${num}</span>`;
-            };
-            
-            // Formata os valores monetários
-            const freightValue = delivery.freightValue ? parseFloat(delivery.freightValue).toFixed(2) : '';
-            const companyValue = delivery.companyValue ? parseFloat(delivery.companyValue).toFixed(2) : '';
-            
-            row.innerHTML = `
-                <td>${formatDate(delivery.createdAt)}</td>
-                <td>${delivery.clientName || ''}</td>
-                <td>${delivery.responsibleName || ''}</td>
-                <td>${formatWhatsapp(delivery.responsibleWhatsapp)}</td>
-                <td>${delivery.driverName || ''}</td>
-                <td>${formatWhatsapp(delivery.driverWhatsapp)}</td>
-                <td>${delivery.receiverName || ''}</td>
-                <td>${formatWhatsapp(delivery.receiverWhatsapp)}</td>
-                <td>${delivery.collaborator || ''}</td>
-                <td>${delivery.origin || ''}</td>
-                <td>${delivery.destination || ''}</td>
-                <td>${freightValue ? 'R$ ' + freightValue : '-'}</td>
-                <td>${companyValue ? 'R$ ' + companyValue : '-'}</td>
-                <td class="status-${delivery.status || ''}">${getStatusText(delivery.status || '')}</td>
-                <td>${delivery.observation || ''}</td>
-                <td><button class="action-btn" onclick="editRow('${id}')">Editar</button></td>
-            `;
-            
-            tableBody.appendChild(row);
-            
-            // Adiciona evento de clique para copiar número
-            row.querySelectorAll('.whatsapp-number').forEach(el => {
-                el.addEventListener('click', function() {
-                    const number = this.textContent;
-                    navigator.clipboard.writeText(number).then(() => {
-                        showCopyNotification();
-                    }).catch(err => {
-                        console.error('Erro ao copiar número: ', err);
+            if (id.startsWith('new-')) {
+                // Nova entrega
+                entregasRef.push(entrega)
+                    .then(() => {
+                        linha.remove();
+                    })
+                    .catch(error => {
+                        console.error("Erro ao salvar:", error);
+                        alert("Erro ao salvar os dados. Por favor, tente novamente.");
                     });
-                });
-            });
-        }
-
-        // Função para obter o texto do status
-        function getStatusText(status) {
-            switch(status) {
-                case 'coletando': return 'Coletando';
-                case 'transito': return 'Em trânsito';
-                case 'parado': return 'Parado';
-                case 'entregue': return 'Entregue';
-                default: return status;
+            } else {
+                // Edição de entrega existente
+                entregasRef.child(id).update(entrega)
+                    .catch(error => {
+                        console.error("Erro ao atualizar:", error);
+                        alert("Erro ao atualizar os dados. Por favor, tente novamente.");
+                    });
             }
         }
-
-        // Função para resetar os filtros
-        function resetFilters() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('driverFilter').value = '';
-            document.getElementById('collaboratorFilter').value = '';
-            document.getElementById('monthFilter').value = 'all';
-            currentMonthFilter = 'all';
-            applyCombinedFilter();
-        }
-
+        
         // Função para editar uma linha existente
-        function editRow(id) {
-            const delivery = deliveries[id];
-            if (!delivery) return;
+        function editarLinha(botao) {
+            const linha = botao.closest('tr');
+            const id = linha.dataset.id;
+            const celulas = linha.cells;
             
-            const row = document.querySelector(`tr[data-id="${id}"]`);
-            if (!row) return;
+            // Salva o conteúdo original para possível cancelamento
+            linha.dataset.originalContent = linha.innerHTML;
             
-            // Formata a data para o input date
-            const dateValue = delivery.createdAt ? new Date(delivery.createdAt).toISOString().split('T')[0] : '';
+            // Converte a data para o formato do input
+            const dataInput = celulas[0].textContent;
+            const [dia, mes, ano] = dataInput.split('/');
+            const dataFormatada = `${ano}-${mes}-${dia}`;
             
-            // Formata os valores para exibição nos inputs
-            const freightValue = delivery.freightValue ? delivery.freightValue.toFixed(2).replace('.', ',') : '';
-            const companyValue = delivery.companyValue ? delivery.companyValue.toFixed(2).replace('.', ',') : '';
+            // Converte o prazo para o formato do input (se existir)
+            const prazoInput = celulas[11].textContent;
+            let prazoFormatado = '';
+            if (prazoInput !== '-') {
+                const [diaP, mesP, anoP] = prazoInput.split('/');
+                prazoFormatado = `${anoP}-${mesP}-${diaP}`;
+            }
             
-            row.innerHTML = `
-                <td><input type="date" class="date-input" value="${dateValue}"></td>
-                <td><input type="text" value="${delivery.clientName || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.responsibleName || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.responsibleWhatsapp || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.driverName || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.driverWhatsapp || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.receiverName || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.receiverWhatsapp || ''}" class="required-field"></td>
+            // Obtém o status atual
+            const statusClass = celulas[10].className;
+            const statusAtual = statusClass.replace('status-', '');
+            
+            // Cria os campos editáveis
+            linha.className = 'edit-row';
+            linha.innerHTML = `
+                <td><input type="date" value="${dataFormatada}"></td>
                 <td>
-                    <select class="required-field">
-                        <option value="">Selecione</option>
-                        ${collaborators.map(c => `<option value="${c}" ${c === delivery.collaborator ? 'selected' : ''}>${c}</option>`).join('')}
+                    <select>
+                        <option value="MARCIA" ${celulas[1].textContent === 'MARCIA' ? 'selected' : ''}>MARCIA</option>
+                        <option value="MARIANE" ${celulas[1].textContent === 'MARIANE' ? 'selected' : ''}>MARIANE</option>
+                        <option value="JEISE" ${celulas[1].textContent === 'JEISE' ? 'selected' : ''}>JEISE</option>
+                        <option value="MONICA" ${celulas[1].textContent === 'MONICA' ? 'selected' : ''}>MONICA</option>
+                        <option value="ANA" ${celulas[1].textContent === 'ANA' ? 'selected' : ''}>ANA</option>
+                        <option value="MARIVAL" ${celulas[1].textContent === 'MARIVAL' ? 'selected' : ''}>MARIVAL</option>
+                        <option value="GENIVALDO" ${celulas[1].textContent === 'GENIVALDO' ? 'selected' : ''}>GENIVALDO</option>
                     </select>
                 </td>
-                <td><input type="text" value="${delivery.origin || ''}" class="required-field"></td>
-                <td><input type="text" value="${delivery.destination || ''}" class="required-field"></td>
-                <td><input type="text" value="${freightValue}"></td>
-                <td><input type="text" value="${companyValue}"></td>
+                <td><input type="text" value="${celulas[2].textContent}"></td>
+                <td><input type="text" value="${formatarTelefoneDisplay(celulas[3].querySelector('a').textContent)}"></td>
+                <td><input type="text" value="${celulas[4].textContent}"></td>
+                <td><input type="text" value="${formatarTelefoneDisplay(celulas[5].querySelector('a').textContent)}"></td>
+                <td><input type="text" value="${celulas[6].textContent}"></td>
+                <td><input type="text" value="${celulas[7].textContent}"></td>
+                <td><input type="text" value="${celulas[8].textContent === '-' ? '' : celulas[8].textContent}"></td>
+                <td><input type="text" value="${celulas[9].textContent === '-' ? '' : celulas[9].textContent}"></td>
                 <td>
-                    <select class="required-field">
-                        <option value="coletando" ${delivery.status === 'coletando' ? 'selected' : ''}>Coletando</option>
-                        <option value="transito" ${delivery.status === 'transito' ? 'selected' : ''}>Em trânsito</option>
-                        <option value="parado" ${delivery.status === 'parado' ? 'selected' : ''}>Parado</option>
-                        <option value="entregue" ${delivery.status === 'entregue' ? 'selected' : ''}>Entregue</option>
+                    <select>
+                        <option value="coletando" ${statusAtual === 'coletando' ? 'selected' : ''}>Coletando</option>
+                        <option value="transito" ${statusAtual === 'transito' ? 'selected' : ''}>Em trânsito</option>
+                        <option value="parado" ${statusAtual === 'parado' ? 'selected' : ''}>Parado</option>
+                        <option value="entregue" ${statusAtual === 'entregue' ? 'selected' : ''}>Entregue</option>
                     </select>
                 </td>
-                <td><input type="text" value="${delivery.observation || ''}"></td>
-                <td>
-                    <button class="action-btn" onclick="updateRow('${id}', this)">Atualizar</button>
-                    <button class="action-btn delete-btn" onclick="deleteDelivery('${id}')">Excluir</button>
-                    <button class="action-btn cancel-btn" onclick="cancelEdit('${id}')">Cancelar</button>
+                <td><input type="date" value="${prazoFormatado}"></td>
+                <td><input type="text" value="${celulas[12].textContent === '-' ? '' : celulas[12].textContent}"></td>
+                <td class="action-buttons">
+                    <button class="save-btn" onclick="salvarLinha(this)">Salvar</button>
+                    <button class="cancel-btn" onclick="cancelarEdicao(this)">Cancelar</button>
                 </td>
             `;
+            
+            // Adiciona máscara aos campos de telefone
+            linha.querySelectorAll('input[type="text"]').forEach(input => {
+                if (input.value.includes('(')) {
+                    input.addEventListener('input', formatarTelefoneInput);
+                } else if (input.value.startsWith('R$')) {
+                    input.addEventListener('input', formatarMoedaInput);
+                }
+            });
             
             // Foca no primeiro campo
-            row.querySelector('input[type="text"]').focus();
+            linha.querySelector('input').focus();
         }
-
-        // Função para atualizar uma linha existente
-        function updateRow(id, button) {
-            const row = button.parentNode.parentNode;
-            const inputs = row.querySelectorAll("input");
-            const selects = row.querySelectorAll("select");
-            
-            // Converte a data para timestamp
-            const dateInput = inputs[0].value;
-            const dateTimestamp = dateInput ? new Date(dateInput).getTime() : Date.now();
-            
-            const deliveryData = {
-                clientName: inputs[1].value.trim(),
-                responsibleName: inputs[2].value.trim(),
-                responsibleWhatsapp: inputs[3].value.trim(),
-                driverName: inputs[4].value.trim(),
-                driverWhatsapp: inputs[5].value.trim(),
-                receiverName: inputs[6].value.trim(),
-                receiverWhatsapp: inputs[7].value.trim(),
-                collaborator: selects[0].value,
-                origin: inputs[8].value.trim(),
-                destination: inputs[9].value.trim(),
-                freightValue: inputs[10].value.trim(),
-                companyValue: inputs[11].value.trim(),
-                status: selects[1].value,
-                observation: inputs[12]?.value.trim() || '',
-                updatedAt: Date.now(),
-                createdAt: dateTimestamp
-            };
-            
-            // Validação dos campos obrigatórios
-            const requiredFields = [
-                {field: 'clientName', name: 'Cliente'},
-                {field: 'responsibleName', name: 'Responsável'},
-                {field: 'responsibleWhatsapp', name: 'WhatsApp do Responsável'},
-                {field: 'driverName', name: 'Motorista'},
-                {field: 'driverWhatsapp', name: 'WhatsApp do Motorista'},
-                {field: 'receiverName', name: 'Recebedor'},
-                {field: 'receiverWhatsapp', name: 'WhatsApp do Recebedor'},
-                {field: 'collaborator', name: 'Colaborador'},
-                {field: 'origin', name: 'Origem'},
-                {field: 'destination', name: 'Destino'}
-            ];
-            
-            const missingFields = requiredFields.filter(f => !deliveryData[f.field]);
-            
-            if (missingFields.length > 0) {
-                alert(`Por favor, preencha os seguintes campos obrigatórios:\n${missingFields.map(f => f.name).join('\n')}`);
-                return;
-            }
-            
-            // Valida números de WhatsApp
-            const whatsappFields = [
-                {field: 'responsibleWhatsapp', name: 'WhatsApp do Responsável'},
-                {field: 'driverWhatsapp', name: 'WhatsApp do Motorista'},
-                {field: 'receiverWhatsapp', name: 'WhatsApp do Recebedor'}
-            ];
-            
-            for (const field of whatsappFields) {
-                const number = deliveryData[field.field].replace(/\D/g, '');
-                if (number.length < 10 || number.length > 11) {
-                    alert(`${field.name} inválido! Deve conter DDD + número (10 ou 11 dígitos)`);
-                    return;
-                }
-                deliveryData[field.field] = number;
-            }
-            
-            // Formata os valores monetários
-            if (deliveryData.freightValue) {
-                deliveryData.freightValue = parseFloat(deliveryData.freightValue.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-            } else {
-                deliveryData.freightValue = 0;
-            }
-            
-            if (deliveryData.companyValue) {
-                deliveryData.companyValue = parseFloat(deliveryData.companyValue.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-            } else {
-                deliveryData.companyValue = 0;
-            }
-            
-            showLoading(true);
-            
-            // Atualiza no Firebase
-            deliveriesRef.child(id).update(deliveryData)
-                .then(() => {
-                    showLoading(false);
-                })
-                .catch(error => {
-                    console.error("Erro ao atualizar entrega:", error);
-                    showLoading(false);
-                    alert("Erro ao atualizar os dados. Por favor, tente novamente.");
-                });
-        }
-
-        // Função para excluir uma entrega
-        function deleteDelivery(id) {
-            if (!confirm("Tem certeza que deseja excluir esta entrega? Esta ação não pode ser desfeita.")) {
-                return;
-            }
-            
-            showLoading(true);
-            deliveriesRef.child(id).remove()
-                .then(() => {
-                    showLoading(false);
-                })
-                .catch(error => {
-                    console.error("Erro ao remover entrega:", error);
-                    showLoading(false);
-                    alert("Erro ao excluir a entrega. Por favor, tente novamente.");
-                });
-        }
-
+        
         // Função para cancelar edição
-        function cancelEdit(id) {
-            const delivery = deliveries[id];
-            if (!delivery) return;
+        function cancelarEdicao(botao) {
+            const linha = botao.closest('tr');
             
-            addDeliveryToTable(id, delivery);
+            if (linha.dataset.originalContent) {
+                // Restaura o conteúdo original (edição)
+                linha.innerHTML = linha.dataset.originalContent;
+                linha.className = '';
+            } else {
+                // Remove a linha (adição nova)
+                linha.remove();
+            }
         }
-
-        // Inicializa a aplicação quando o DOM estiver pronto
-        document.addEventListener('DOMContentLoaded', function() {
-            // Adiciona evento de clique ao botão de adicionar
-            document.getElementById('addButton').addEventListener('click', addNewRow);
+        
+        // Função para excluir uma linha (agora com verificação de senha)
+        function excluirLinha(botao) {
+            const id = botao.closest('tr').dataset.id;
+            showPasswordModal(id);
+        }
+        
+        // Função para atualizar o status diretamente
+        function atualizarStatus(select, id) {
+            const novoStatus = select.value;
+            entregasRef.child(id).update({
+                status: novoStatus,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            })
+            .catch(error => {
+                console.error("Erro ao atualizar status:", error);
+                alert("Erro ao atualizar o status. Por favor, tente novamente.");
+            });
+        }
+        
+        // Função para formatar telefone durante a digitação
+        function formatarTelefoneInput(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                value = '(' + value;
+            }
+            if (value.length > 3) {
+                value = value.substring(0, 3) + ') ' + value.substring(3);
+            }
+            if (value.length > 10) {
+                value = value.substring(0, 10) + '-' + value.substring(10, 15);
+            }
+            e.target.value = value;
+        }
+        
+        // Função para formatar telefone para exibição
+        function formatarTelefoneDisplay(numero) {
+            const nums = numero.replace(/\D/g, '');
+            return `(${nums.substring(0,2)}) ${nums.substring(2,7)}-${nums.substring(7,11)}`;
+        }
+        
+        // Função para formatar moeda durante a digitação
+        function formatarMoedaInput(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            value = (value / 100).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            e.target.value = 'R$ ' + value;
+        }
+        
+        // Função para carregar dados do Firebase
+        function carregarDados() {
+            entregasRef.on('value', (snapshot) => {
+                const entregas = snapshot.val() || {};
+                const tabela = document.getElementById('corpoTabela');
+                tabela.innerHTML = '';
+                
+                Object.keys(entregas).forEach(id => {
+                    const entrega = entregas[id];
+                    const data = new Date(entrega.data);
+                    const dataFormatada = data.toLocaleDateString('pt-BR');
+                    
+                    let prazoFormatado = '-';
+                    if (entrega.prazo) {
+                        const prazo = new Date(entrega.prazo);
+                        prazoFormatado = prazo.toLocaleDateString('pt-BR');
+                    }
+                    
+                    const row = document.createElement('tr');
+                    row.dataset.id = id;
+                    row.innerHTML = `
+                        <td>${dataFormatada}</td>
+                        <td>${entrega.vendedor}</td>
+                        <td>${entrega.cliente}</td>
+                        <td><a href="#" class="whatsapp-link" onclick="copiarNumero('${entrega.telefoneCliente}')">${formatarTelefoneDisplay(entrega.telefoneCliente)}</a></td>
+                        <td>${entrega.motorista}</td>
+                        <td><a href="#" class="whatsapp-link" onclick="copiarNumero('${entrega.telefoneMotorista}')">${formatarTelefoneDisplay(entrega.telefoneMotorista)}</a></td>
+                        <td>${entrega.origem}</td>
+                        <td>${entrega.destino}</td>
+                        <td>${entrega.freteEmpresa ? 'R$ ' + entrega.freteEmpresa.toFixed(2).replace('.', ',') : '-'}</td>
+                        <td>${entrega.freteMotorista ? 'R$ ' + entrega.freteMotorista.toFixed(2).replace('.', ',') : '-'}</td>
+                        <td class="status-${entrega.status}">
+                            <select class="status-select" onchange="atualizarStatus(this, '${id}')">
+                                <option value="coletando" ${entrega.status === 'coletando' ? 'selected' : ''}>Coletando</option>
+                                <option value="transito" ${entrega.status === 'transito' ? 'selected' : ''}>Em trânsito</option>
+                                <option value="parado" ${entrega.status === 'parado' ? 'selected' : ''}>Parado</option>
+                                <option value="entregue" ${entrega.status === 'entregue' ? 'selected' : ''}>Entregue</option>
+                            </select>
+                        </td>
+                        <td>${prazoFormatado}</td>
+                        <td>${entrega.observacao || '-'}</td>
+                        <td class="action-buttons">
+                            <button class="edit-btn" onclick="editarLinha(this)">Editar</button>
+                            <button class="delete-btn" onclick="excluirLinha(this)">Excluir</button>
+                        </td>
+                    `;
+                    
+                    tabela.appendChild(row);
+                });
+                
+                proximoId = Object.keys(entregas).length + 1;
+            });
+        }
+        
+        // Função para filtrar a tabela
+        function filtrarTabela() {
+            const vendedor = document.getElementById('vendedorFilter').value;
+            const status = document.getElementById('statusFilter').value;
             
-            // Adiciona eventos aos filtros
-            document.getElementById('searchInput').addEventListener('input', applyCombinedFilter);
-            document.getElementById('statusFilter').addEventListener('change', applyCombinedFilter);
-            document.getElementById('driverFilter').addEventListener('change', applyCombinedFilter);
-            document.getElementById('collaboratorFilter').addEventListener('change', applyCombinedFilter);
-            document.getElementById('monthFilter').addEventListener('change', function() {
-                currentMonthFilter = this.value;
-                applyCombinedFilter();
+            const linhas = document.querySelectorAll('#corpoTabela tr:not(.edit-row)');
+            
+            linhas.forEach(linha => {
+                const colVendedor = linha.cells[1].textContent;
+                const colStatus = linha.cells[10].className.replace('status-', '');
+                
+                const mostraLinha = 
+                    (vendedor === '' || colVendedor === vendedor) &&
+                    (status === '' || colStatus === status);
+                
+                linha.style.display = mostraLinha ? '' : 'none';
+            });
+        }
+        
+        // Função para carregar dados do mês selecionado
+        function carregarMes() {
+            const mes = document.getElementById('mesFilter').value;
+            const ano = document.getElementById('anoFilter').value;
+            
+            // Aqui você implementaria a filtragem por mês/ano
+            alert(`Filtrando por ${mes}/${ano}...`);
+        }
+        
+        // Função para exportar para Excel
+        function exportarExcel() {
+            const tabela = document.getElementById('tabelaEntregas');
+            const linhasVisiveis = Array.from(tabela.querySelectorAll('tbody tr:not(.edit-row)'))
+                .filter(linha => linha.style.display !== 'none');
+            
+            if (linhasVisiveis.length === 0) {
+                alert('Nenhum dado para exportar!');
+                return;
+            }
+            
+            // Criar uma nova planilha
+            const wb = XLSX.utils.book_new();
+            
+            // Converter a tabela para uma matriz de dados
+            const dados = [];
+            
+            // Adicionar cabeçalhos
+            const cabecalhos = Array.from(tabela.querySelectorAll('thead th'))
+                .map(th => th.textContent);
+            // Remove a coluna de ações
+            cabecalhos.pop();
+            dados.push(cabecalhos);
+            
+            // Adicionar linhas de dados (apenas as visíveis)
+            linhasVisiveis.forEach(linha => {
+                const celulas = Array.from(linha.cells);
+                const linhaDados = celulas.map(celula => {
+                    // Remove os links de WhatsApp, mantendo apenas o texto
+                    if (celula.querySelector('.whatsapp-link')) {
+                        return celula.querySelector('.whatsapp-link').textContent;
+                    }
+                    // Pega o valor selecionado do status
+                    if (celula.querySelector('.status-select')) {
+                        return celula.querySelector('.status-select').value;
+                    }
+                    return celula.textContent;
+                });
+                // Remove a coluna de ações
+                linhaDados.pop();
+                dados.push(linhaDados);
             });
             
-            // Carrega os dados do Firebase
-            loadData();
-        });
+            // Criar planilha
+            const ws = XLSX.utils.aoa_to_sheet(dados);
+            
+            // Adicionar planilha ao livro
+            XLSX.utils.book_append_sheet(wb, ws, "Entregas");
+            
+            // Gerar arquivo Excel
+            const nomeArquivo = `entregas_${document.getElementById('mesFilter').value}_${document.getElementById('anoFilter').value}.xlsx`;
+            XLSX.writeFile(wb, nomeArquivo);
+        }
+        
+        // Adicionar eventos aos filtros
+        document.getElementById('vendedorFilter').addEventListener('change', filtrarTabela);
+        document.getElementById('statusFilter').addEventListener('change', filtrarTabela);
+        
+        // Definir mês atual como padrão
+        const dataAtual = new Date();
+        document.getElementById('mesFilter').value = (dataAtual.getMonth() + 1).toString().padStart(2, '0');
+        document.getElementById('anoFilter').value = dataAtual.getFullYear().toString();
+        
+        // Carrega os dados quando a página é carregada
+        document.addEventListener('DOMContentLoaded', carregarDados);
     </script>
 </body>
 </html>
