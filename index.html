@@ -1,904 +1,949 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acompanhamento de Entregas</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <title>Sistema de Folha de Ponto | Firebase + Export Excel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --gray: #95a5a6;
+            --white: #ffffff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: var(--primary);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .logo i {
+            font-size: 2.5rem;
+            color: var(--secondary);
         }
         
         h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 20px;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .periodo {
+            font-size: 1.2rem;
+            color: var(--light);
         }
         
         .controls {
-            background-color: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
             display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: var(--light);
+            border-bottom: 1px solid #ddd;
             flex-wrap: wrap;
-            gap: 15px;
-            align-items: flex-end;
-        }
-        
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            min-width: 150px;
-        }
-        
-        .date-filters {
-            display: flex;
             gap: 10px;
-            align-items: flex-end;
         }
         
-        button {
-            padding: 8px 15px;
-            color: white;
+        .btn {
+            padding: 10px 20px;
             border: none;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .filter-btn {
-            background-color: #4CAF50;
+        .btn-primary {
+            background: var(--secondary);
+            color: white;
         }
         
-        .filter-btn:hover {
-            background-color: #45a049;
+        .btn-primary:hover {
+            background: #2980b9;
         }
         
-        .export-btn {
-            background-color: #2196F3;
+        .btn-success {
+            background: var(--success);
+            color: white;
         }
         
-        .export-btn:hover {
-            background-color: #0b7dda;
+        .btn-success:hover {
+            background: #27ae60;
         }
         
-        .load-btn {
-            background-color: #ff9800;
+        .btn-danger {
+            background: var(--accent);
+            color: white;
         }
         
-        .load-btn:hover {
-            background-color: #e68a00;
+        .btn-danger:hover {
+            background: #c0392b;
         }
         
-        .add-btn {
-            background-color: #9C27B0;
+        .btn-excel {
+            background: #1D6F42;
+            color: white;
         }
         
-        .add-btn:hover {
-            background-color: #7B1FA2;
+        .btn-excel:hover {
+            background: #165B34;
         }
         
-        .save-btn {
-            background-color: #4CAF50;
+        .employee-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
-        .edit-btn {
-            background-color: #2196F3;
-        }
-        
-        .delete-btn {
-            background-color: #f44336;
-        }
-        
-        .cancel-btn {
-            background-color: #ff9800;
-            color: #333;
-        }
-        
-        select, input {
-            padding: 8px;
+        select {
+            padding: 10px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .sheet-container {
+            padding: 20px;
+            overflow-x: auto;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            background-color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         
         th, td {
+            padding: 12px 15px;
+            text-align: center;
             border: 1px solid #ddd;
-            padding: 12px;
-            text-align: left;
         }
         
         th {
-            background-color: #f2f2f2;
-            font-weight: bold;
+            background-color: var(--secondary);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
         }
         
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
         
-        .status-coletando {
-            color: #0077b6;
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        
+        input[type="time"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .total-cell {
             font-weight: bold;
+            background-color: #eaf7ff;
         }
         
-        .status-transito {
-            color: #ff9800;
+        .overtime-cell {
             font-weight: bold;
+            background-color: #fff5e6;
         }
         
-        .status-parado {
-            color: #f44336;
-            font-weight: bold;
+        .weekend {
+            background-color: #fff0f0;
         }
         
-        .status-entregue {
-            color: #4CAF50;
-            font-weight: bold;
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--light);
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
         }
         
-        .whatsapp-link {
-            color: #25D366;
-            text-decoration: none;
-            font-weight: bold;
-            display: inline-block;
-            padding: 2px 5px;
-            border-radius: 3px;
+        .summary-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
-        .whatsapp-link:hover {
-            background-color: rgba(37, 211, 102, 0.1);
+        .summary-card h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 5px;
         }
         
-        .copy-notification {
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .signature-area {
+            margin-top: 30px;
+            padding: 20px;
+            border-top: 2px dashed #ddd;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature-box {
+            width: 48%;
+            text-align: center;
+        }
+        
+        .signature-line {
+            margin-top: 60px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: var(--primary);
+            color: white;
+            margin-top: 30px;
+        }
+        
+        .notification {
             position: fixed;
             top: 20px;
             right: 20px;
-            background-color: #4CAF50;
+            padding: 15px 20px;
+            border-radius: 5px;
             color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            display: none;
+            font-weight: 600;
             z-index: 1000;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
         }
         
-        .edit-row {
-            background-color: #fffde7 !important;
+        .notification.success {
+            background: var(--success);
+            opacity: 1;
+            transform: translateY(0);
         }
         
-        input[type="text"], input[type="date"], select {
-            width: 100%;
-            box-sizing: border-box;
+        .notification.error {
+            background: var(--accent);
+            opacity: 1;
+            transform: translateY(0);
         }
         
-        input[type="password"] {
-            width: 100%;
-            box-sizing: border-box;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        
-        .action-buttons button {
-            padding: 6px 10px;
-            font-size: 12px;
-        }
-        
-        .status-select {
-            border: none;
-            background: transparent;
-            font-weight: bold;
-            color: inherit;
-            cursor: pointer;
-        }
-        
-        .status-select:focus {
-            outline: none;
-            background: white;
-            box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
-        }
-
-        /* Estilos para as abas */
-        .tabs {
-            display: flex;
-            margin-bottom: 15px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #f2f2f2;
-            border-right: 1px solid #ddd;
-            transition: background-color 0.3s;
-        }
-
-        .tab:last-child {
-            border-right: none;
-        }
-
-        .tab.active {
-            background-color: #4CAF50;
-            color: white;
-            font-weight: bold;
-        }
-
-        .tab:hover:not(.active) {
-            background-color: #e6e6e6;
-        }
-
-        /* Modal para senha */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1001;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 15% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 300px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
+        .export-options {
             margin-top: 20px;
-            gap: 10px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .export-options h3 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+        
+        .option-group {
+            margin-bottom: 15px;
+        }
+        
+        .option-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .option-group select, .option-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+                background: white;
+            }
+            
+            .container {
+                box-shadow: none;
+            }
+            
+            .btn, .employee-selector, .export-options {
+                display: none;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .signature-area {
+                flex-direction: column;
+                gap: 30px;
+            }
+            
+            .signature-box {
+                width: 100%;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .employee-selector {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .actions {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="copy-notification" id="copyNotification">Número copiado!</div>
-    
-    <!-- Modal para senha -->
-    <div id="passwordModal" class="modal">
-        <div class="modal-content">
-            <h3>Digite a senha para excluir</h3>
-            <input type="password" id="passwordInput" placeholder="Senha" autocomplete="off">
-            <div class="modal-buttons">
-                <button class="cancel-btn" onclick="cancelDelete()">Cancelar</button>
-                <button class="save-btn" onclick="confirmDelete()">Confirmar</button>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <h1>CONTROLE DE PONTO ELETRÔNICO</h1>
+                    <div class="periodo">Setembro 2025</div>
+                </div>
             </div>
-            <p id="passwordError" style="color: red; display: none;">Senha incorreta!</p>
-        </div>
-    </div>
-    
-    <h1>📦 Acompanhamento de Entregas</h1>
-    
-    <!-- Abas para filtros rápidos -->
-    <div class="tabs">
-        <div class="tab active" onclick="filtrarPorAba('todos')">Todos</div>
-        <div class="tab" onclick="filtrarPorAba('coletando')">Coletando</div>
-        <div class="tab" onclick="filtrarPorAba('transito')">Em Trânsito</div>
-        <div class="tab" onclick="filtrarPorAba('parado')">Parado</div>
-        <div class="tab" onclick="filtrarPorAba('entregue')">Entregue</div>
-    </div>
-    
-    <div class="controls">
-        <div class="filter-group">
-            <label for="vendedorFilter">Vendedor</label>
-            <select id="vendedorFilter">
-                <option value="">Todos</option>
-                <option value="MARCIA">MARCIA</option>
-                <option value="MARIANE">MARIANE</option>
-                <option value="JEISE">JEISE</option>
-                <option value="MONICA">MONICA</option>
-                <option value="ANA">ANA</option>
-                <option value="MARIVAL">MARIVAL</option>
-                <option value="GENIVALDO">GENIVALDO</option>
-            </select>
-        </div>
+        </header>
         
-        <div class="filter-group">
-            <label for="statusFilter">Status</label>
-            <select id="statusFilter">
-                <option value="">Todos</option>
-                <option value="coletando">Coletando</option>
-                <option value="transito">Em trânsito</option>
-                <option value="parado">Parado</option>
-                <option value="entregue">Entregue</option>
-            </select>
-        </div>
-        
-        <div class="date-filters">
-            <div class="filter-group">
-                <label for="mesFilter">Mês</label>
-                <select id="mesFilter">
-                    <option value="01">Janeiro</option>
-                    <option value="02">Fevereiro</option>
-                    <option value="03">Março</option>
-                    <option value="04">Abril</option>
-                    <option value="05">Maio</option>
-                    <option value="06">Junho</option>
-                    <option value="07">Julho</option>
-                    <option value="08">Agosto</option>
-                    <option value="09">Setembro</option>
-                    <option value="10">Outubro</option>
-                    <option value="11">Novembro</option>
-                    <option value="12">Dezembro</option>
+        <div class="controls">
+            <div class="employee-selector">
+                <label for="employee"><i class="fas fa-user"></i> Funcionário:</label>
+                <select id="employee">
+                    <option value="JOSE_AUGUSTO_DA_SILVA_SANTOS">JOSE AUGUSTO DA SILVA SANTOS</option>
+                    <option value="FRANCISCO_EUDES_DE_FREITAS">FRANCISCO EUDES DE FREITAS</option>
+                    <option value="MARCOS_ANTONIO_DA_ANUNCIACAO_COSTA">MARCOS ANTONIO DA ANUNCIACAO COSTA</option>
+                    <option value="RAFAEL_ARAUJO_DE_LIMA">RAFAEL ARAUJO DE LIMA</option>
+                    <option value="WESLEY_CAIQUE_DOS_SANTOS_BARBOSA">WESLEY CAIQUE DOS SANTOS BARBOSA</option>
                 </select>
             </div>
             
-            <div class="filter-group">
-                <label for="anoFilter">Ano</label>
-                <select id="anoFilter">
-                    <option value="2023">2023</option>
-                    <option value="2024" selected>2024</option>
-                    <option value="2025">2025</option>
-                </select>
+            <div class="actions">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+                <button class="btn btn-success" onclick="saveData()">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+                <button class="btn btn-excel" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+                <button class="btn btn-danger" onclick="clearData()">
+                    <i class="fas fa-trash"></i> Limpar
+                </button>
             </div>
-            
-            <button class="load-btn" onclick="carregarMes()">Carregar Mês</button>
         </div>
         
-        <button class="add-btn" onclick="adicionarNovaLinha()">Adicionar Entrega</button>
-        <button class="export-btn" onclick="exportarExcel()">Exportar para Excel</button>
+        <div class="sheet-container">
+            <table id="timeSheet">
+                <thead>
+                    <tr>
+                        <th>DATA</th>
+                        <th>DIA</th>
+                        <th>ENTRADA</th>
+                        <th>INÍCIO INTERVALO</th>
+                        <th>FIM INTERVALO</th>
+                        <th>SAÍDA</th>
+                        <th>TOTAL DIÁRIO</th>
+                        <th>HORA EXTRA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JavaScript will generate the rows here -->
+                </tbody>
+            </table>
+            
+            <div class="summary">
+                <div class="summary-card">
+                    <h3><i class="fas fa-chart-line"></i> RESUMO DO MÊS</h3>
+                    <div class="summary-item">
+                        <span>Total de Horas Trabalhadas:</span>
+                        <span id="totalHours">00:00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Total de Horas Extras:</span>
+                        <span id="totalOvertime">00:00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Dias Trabalhados:</span>
+                        <span id="daysWorked">0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Média Diária:</span>
+                        <span id="dailyAverage">00:00</span>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <h3><i class="fas fa-info-circle"></i> INFORMAÇÕES</h3>
+                    <div class="summary-item">
+                        <span>Jornada Padrão:</span>
+                        <span>8 horas/dia</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Intervalo Mínimo:</span>
+                        <span>1 hora</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Dias Úteis:</span>
+                        <span id="businessDays">22</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Status:</span>
+                        <span id="status">Em andamento</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="export-options">
+                <h3><i class="fas fa-cog"></i> Opções de Exportação</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div class="option-group">
+                        <label for="exportFormat">Formato de Exportação:</label>
+                        <select id="exportFormat">
+                            <option value="xlsx">Excel (.xlsx)</option>
+                            <option value="csv">CSV (.csv)</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="exportRange">Período de Exportação:</label>
+                        <select id="exportRange">
+                            <option value="current">Mês Atual</option>
+                            <option value="all">Todos os Dados</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="includeSignatures">Incluir Assinaturas:</label>
+                        <select id="includeSignatures">
+                            <option value="yes">Sim</option>
+                            <option value="no">Não</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="signature-area">
+                <div class="signature-box">
+                    <p>Empregador(a)</p>
+                    <div class="signature-line"></div>
+                    <p>Nome e Assinatura</p>
+                </div>
+                
+                <div class="signature-box">
+                    <p>Empregado(a)</p>
+                    <div class="signature-line"></div>
+                    <p>Nome e Assinatura</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Sistema de Controle de Ponto Eletrônico | Desenvolvido para Gestão de Recursos Humanos</p>
+            <p>© 2025 - Todos os direitos reservados</p>
+        </footer>
     </div>
-    
-    <table id="tabelaEntregas">
-        <thead>
-            <tr>
-                <th>DATA</th>
-                <th>VENDEDOR</th>
-                <th>CLIENTE</th>
-                <th>TELEFONE CLIENTE</th>
-                <th>MOTORISTA</th>
-                <th>TELEFONE MOTORISTA</th>
-                <th>ORIGEM</th>
-                <th>DESTINO</th>
-                <th>FRETE EMPRESA</th>
-                <th>FRETE MOTORISTA</th>
-                <th>STATUS</th>
-                <th>PRAZO</th>
-                <th>OBSERVAÇÃO</th>
-                <th>AÇÕES</th>
-            </tr>
-        </thead>
-        <tbody id="corpoTabela">
-            <!-- Dados serão carregados do Firebase -->
-        </tbody>
-    </table>
+
+    <div id="notification" class="notification"></div>
 
     <script>
-        // Configuração do Firebase (substitua com suas credenciais)
+        // Configuração do Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyAG60_tih4qVGIlT1bs_kt-_E_77xw-XX8",
-            authDomain: "acompanhamento-transportes.firebaseapp.com",
-            databaseURL: "https://acompanhamento-transportes-default-rtdb.firebaseio.com",
-            projectId: "acompanhamento-transportes",
-            storageBucket: "acompanhamento-transportes.firebasestorage.app",
-            messagingSenderId: "471884949849",
-            appId: "1:471884949849:web:8a14680219698dddc90448"
+            apiKey: "AIzaSyDHq5CCYK9zkqzmKRoNyqo7anw1hSVfGNY",
+            authDomain: "folha-de-ponto-5e760.firebaseapp.com",
+            databaseURL: "https://folha-de-ponto-5e760-default-rtdb.firebaseio.com",
+            projectId: "folha-de-ponto-5e760",
+            storageBucket: "folha-de-ponto-5e760.firebasestorage.app",
+            messagingSenderId: "98987648136",
+            appId: "1:98987648136:web:35d99f87a385b5b42e6b3d"
         };
-
-        // Inicializa o Firebase
+        
+        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        const entregasRef = database.ref('entregas');
         
-        // Variável para controlar o ID das entregas
-        let proximoId = 1;
+        // Variáveis globais
+        let currentEmployee = document.getElementById('employee').value;
+        const year = 2025;
+        const month = 8; // Setembro (0-indexed, janeiro=0)
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
         
-        // Variáveis para controle de exclusão
-        let currentDeleteId = null;
-        const SENHA_EXCLUSAO = "axd236"; // Defina sua senha aqui
+        // Inicializar a aplicação
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gerar a tabela
+            generateTimeSheet();
+            
+            // Carregar dados do Firebase
+            loadData();
+            
+            // Configurar event listeners
+            document.getElementById('employee').addEventListener('change', function() {
+                currentEmployee = this.value;
+                loadData();
+            });
+        });
         
-        // Função para mostrar o modal de senha
-        function showPasswordModal(id) {
-            currentDeleteId = id;
-            document.getElementById('passwordModal').style.display = 'block';
-            document.getElementById('passwordInput').value = '';
-            document.getElementById('passwordError').style.display = 'none';
-            document.getElementById('passwordInput').focus();
+        // Gerar a folha de ponto
+        function generateTimeSheet() {
+            const tbody = document.querySelector('#timeSheet tbody');
+            tbody.innerHTML = '';
+            let businessDays = 0;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayOfWeek = date.getDay();
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                
+                if (!isWeekend) businessDays++;
+                
+                const tr = document.createElement('tr');
+                if (isWeekend) tr.classList.add('weekend');
+                
+                tr.innerHTML = `
+                    <td>${day.toString().padStart(2, '0')}/09/2025</td>
+                    <td>${dayNames[dayOfWeek]}</td>
+                    <td><input type="time" name="entrada" data-day="${day}"></td>
+                    <td><input type="time" name="intervalo-inicio" data-day="${day}"></td>
+                    <td><input type="time" name="intervalo-fim" data-day="${day}"></td>
+                    <td><input type="time" name="saida" data-day="${day}"></td>
+                    <td class="total-cell" id="total-${day}">00:00</td>
+                    <td class="overtime-cell" id="overtime-${day}">00:00</td>
+                `;
+                
+                tbody.appendChild(tr);
+            }
+            
+            document.getElementById('businessDays').textContent = businessDays;
+            
+            // Adicionar event listeners para os campos de tempo
+            const timeInputs = document.querySelectorAll('input[type="time"]');
+            timeInputs.forEach(input => {
+                input.addEventListener('change', calculateHours);
+            });
         }
         
-        // Função para cancelar a exclusão
-        function cancelDelete() {
-            document.getElementById('passwordModal').style.display = 'none';
-            currentDeleteId = null;
-        }
-        
-        // Função para confirmar a exclusão após verificar a senha
-        function confirmDelete() {
-            const senha = document.getElementById('passwordInput').value;
-            if (senha === SENHA_EXCLUSAO) {
-                excluirLinhaConfirmada(currentDeleteId);
-                document.getElementById('passwordModal').style.display = 'none';
-                currentDeleteId = null;
-            } else {
-                document.getElementById('passwordError').style.display = 'block';
+        // Calcular horas do dia
+        function calculateHours(event) {
+            const field = event.target;
+            const day = field.getAttribute('data-day');
+            const row = field.parentElement.parentElement;
+            
+            // Obter todos os valores de tempo para este dia
+            const entrada = row.querySelector('input[name="entrada"]').value;
+            const intervaloInicio = row.querySelector('input[name="intervalo-inicio"]').value;
+            const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
+            const saida = row.querySelector('input[name="saida"]').value;
+            
+            // Calcular apenas se todos os campos estiverem preenchidos
+            if (entrada && intervaloInicio && intervaloFim && saida) {
+                // Converter para minutos
+                const entradaMin = timeToMinutes(entrada);
+                const intervaloInicioMin = timeToMinutes(intervaloInicio);
+                const intervaloFimMin = timeToMinutes(intervaloFim);
+                const saidaMin = timeToMinutes(saida);
+                
+                // Validar se os horários são lógicos
+                if (saidaMin <= entradaMin) {
+                    showNotification('Horário de saída deve ser após a entrada', 'error');
+                    resetRow(row);
+                    return;
+                }
+                
+                if (intervaloFimMin <= intervaloInicioMin) {
+                    showNotification('Fim do intervalo deve ser após o início', 'error');
+                    resetRow(row);
+                    return;
+                }
+                
+                if (intervaloInicioMin <= entradaMin || intervaloFimMin >= saidaMin) {
+                    showNotification('Intervalo deve estar dentro do período de trabalho', 'error');
+                    resetRow(row);
+                    return;
+                }
+                
+                // Calcular horas trabalhadas (descontando o intervalo)
+                const horasTrabalhadasMin = (saidaMin - entradaMin) - (intervaloFimMin - intervaloInicioMin);
+                
+                // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
+                const horasExtrasMin = Math.max(0, horasTrabalhadasMin - 480);
+                const horasNormaisMin = horasTrabalhadasMin - horasExtrasMin;
+                
+                // Atualizar totais do dia
+                row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
+                row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
+                
+                // Recalcular totais do mês
+                calculateMonthlyTotals();
             }
         }
         
-        // Função para excluir a linha após confirmação da senha
-        function excluirLinhaConfirmada(id) {
-            entregasRef.child(id).remove()
-                .catch(error => {
-                    console.error("Erro ao excluir:", error);
-                    alert("Erro ao excluir a entrega. Por favor, tente novamente.");
+        // Resetar linha em caso de erro
+        function resetRow(row) {
+            const inputs = row.querySelectorAll('input[type="time"]');
+            inputs.forEach(input => {
+                input.value = '';
+            });
+            
+            row.querySelector('.total-cell').textContent = '00:00';
+            row.querySelector('.overtime-cell').textContent = '00:00';
+        }
+        
+        // Calcular totais mensais
+        function calculateMonthlyTotals() {
+            let totalMinutes = 0;
+            let totalOvertimeMinutes = 0;
+            let daysWorked = 0;
+            
+            // Encontrar todos os totais diários
+            const dailyTotals = document.querySelectorAll('.total-cell');
+            const dailyOvertimes = document.querySelectorAll('.overtime-cell');
+            
+            dailyTotals.forEach(element => {
+                if (element.textContent !== '00:00') {
+                    totalMinutes += timeToMinutes(element.textContent);
+                    daysWorked++;
+                }
+            });
+            
+            dailyOvertimes.forEach(element => {
+                if (element.textContent !== '00:00') {
+                    totalOvertimeMinutes += timeToMinutes(element.textContent);
+                }
+            });
+            
+            // Calcular média diária
+            const dailyAverage = daysWorked > 0 ? Math.round(totalMinutes / daysWorked) : 0;
+            
+            // Atualizar totais mensais
+            document.getElementById('totalHours').textContent = minutesToTime(totalMinutes);
+            document.getElementById('totalOvertime').textContent = minutesToTime(totalOvertimeMinutes);
+            document.getElementById('daysWorked').textContent = daysWorked;
+            document.getElementById('dailyAverage').textContent = minutesToTime(dailyAverage);
+            
+            // Atualizar status
+            const statusElement = document.getElementById('status');
+            if (daysWorked === 0) {
+                statusElement.textContent = "Não iniciado";
+            } else if (daysWorked < document.getElementById('businessDays').textContent) {
+                statusElement.textContent = "Em andamento";
+            } else {
+                statusElement.textContent = "Concluído";
+            }
+        }
+        
+        // Converter tempo para minutos
+        function timeToMinutes(timeStr) {
+            if (!timeStr || timeStr === '00:00') return 0;
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+        
+        // Converter minutos para formato de tempo
+        function minutesToTime(minutes) {
+            if (isNaN(minutes) || minutes <= 0) return '00:00';
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+        
+        // Salvar dados no Firebase
+        function saveData() {
+            try {
+                const employee = document.getElementById('employee').value;
+                const inputs = document.querySelectorAll('input[type="time"]');
+                const data = {};
+                
+                inputs.forEach(input => {
+                    const day = input.getAttribute('data-day');
+                    const fieldName = input.getAttribute('name');
+                    data[`${fieldName}_${day}`] = input.value;
                 });
-        }
-        
-        // Função para filtrar por aba
-        function filtrarPorAba(aba) {
-            // Atualiza a aba ativa
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-                if (tab.textContent.toLowerCase().includes(aba) || 
-                    (aba === 'todos' && tab.textContent === 'Todos')) {
-                    tab.classList.add('active');
-                }
-            });
-
-            // Atualiza o filtro de status
-            const statusFilter = document.getElementById('statusFilter');
-            if (aba === 'todos') {
-                statusFilter.value = '';
-            } else {
-                statusFilter.value = aba;
-            }
-
-            // Aplica o filtro
-            filtrarTabela();
-        }
-        
-        // Função para copiar número para área de transferência
-        function copiarNumero(numero) {
-            navigator.clipboard.writeText(numero).then(() => {
-                const notification = document.getElementById('copyNotification');
-                notification.style.display = 'block';
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 2000);
-            }).catch(err => {
-                console.error('Erro ao copiar número: ', err);
-                alert('Não foi possível copiar o número. Por favor, copie manualmente.');
-            });
-            return false; // Evita que o link siga o href
-        }
-        
-        // Função para adicionar nova linha editável
-        function adicionarNovaLinha() {
-            const tabela = document.getElementById('corpoTabela');
-            
-            // Cria uma nova linha com campos editáveis
-            const newRow = document.createElement('tr');
-            newRow.className = 'edit-row';
-            newRow.dataset.id = 'new-' + Date.now();
-            
-            // Obtém a data atual no formato YYYY-MM-DD
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}`;
-            
-            newRow.innerHTML = `
-                <td><input type="date" value="${formattedDate}"></td>
-                <td>
-                    <select>
-                        <option value="MARCIA">MARCIA</option>
-                        <option value="MARIANE">MARIANE</option>
-                        <option value="JEISE">JEISE</option>
-                        <option value="MONICA">MONICA</option>
-                        <option value="ANA">ANA</option>
-                        <option value="MARIVAL">MARIVAL</option>
-                        <option value="GENIVALDO">GENIVALDO</option>
-                    </select>
-                </td>
-                <td><input type="text" placeholder="Nome do cliente"></td>
-                <td><input type="text" placeholder="(XX) XXXXX-XXXX"></td>
-                <td><input type="text" placeholder="Nome do motorista"></td>
-                <td><input type="text" placeholder="(XX) XXXXX-XXXX"></td>
-                <td><input type="text" placeholder="Cidade/UF"></td>
-                <td><input type="text" placeholder="Cidade/UF"></td>
-                <td><input type="text" placeholder="R$ 0,00"></td>
-                <td><input type="text" placeholder="R$ 0,00"></td>
-                <td>
-                    <select>
-                        <option value="coletando">Coletando</option>
-                        <option value="transito">Em trânsito</option>
-                        <option value="parado">Parado</option>
-                        <option value="entregue">Entregue</option>
-                    </select>
-                </td>
-                <td><input type="date"></td>
-                <td><input type="text" placeholder="Observações"></td>
-                <td class="action-buttons">
-                    <button class="save-btn" onclick="salvarLinha(this)">Salvar</button>
-                    <button class="cancel-btn" onclick="cancelarEdicao(this)">Cancelar</button>
-                </td>
-            `;
-            
-            // Adiciona máscara aos campos de telefone
-            newRow.querySelectorAll('input[type="text"]').forEach(input => {
-                if (input.placeholder.includes('(XX)')) {
-                    input.addEventListener('input', formatarTelefoneInput);
-                } else if (input.placeholder.startsWith('R$')) {
-                    input.addEventListener('input', formatarMoedaInput);
-                }
-            });
-            
-            // Adiciona a nova linha no início da tabela
-            tabela.insertBefore(newRow, tabela.firstChild);
-            
-            // Foca no primeiro campo
-            newRow.querySelector('input').focus();
-        }
-        
-        // Função para salvar uma linha nova ou editada
-        function salvarLinha(botao) {
-            const linha = botao.closest('tr');
-            const inputs = linha.querySelectorAll('input, select');
-            const id = linha.dataset.id;
-            
-            // Validação básica
-            if (!inputs[0].value || !inputs[2].value || !inputs[3].value || !inputs[4].value || !inputs[5].value) {
-                alert('Por favor, preencha os campos obrigatórios: Data, Cliente, Telefone Cliente, Motorista e Telefone Motorista');
-                return;
-            }
-            
-            // Ajuste para a data - pega o valor exato do input sem conversão
-            const dataInput = inputs[0].value;
-            
-            // Cria objeto com os dados da entrega
-            const entrega = {
-                data: dataInput, // Usa o valor direto do input
-                vendedor: inputs[1].value,
-                cliente: inputs[2].value,
-                telefoneCliente: inputs[3].value.replace(/\D/g, ''),
-                motorista: inputs[4].value,
-                telefoneMotorista: inputs[5].value.replace(/\D/g, ''),
-                origem: inputs[6].value,
-                destino: inputs[7].value,
-                freteEmpresa: inputs[8].value ? parseFloat(inputs[8].value.replace(/[^\d,]/g, '').replace(',', '.')) : 0,
-                freteMotorista: inputs[9].value ? parseFloat(inputs[9].value.replace(/[^\d,]/g, '').replace(',', '.')) : 0,
-                status: inputs[10].value,
-                prazo: inputs[11].value || '',
-                observacao: inputs[12].value || '',
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            };
-            
-            // Salva no Firebase
-            if (id.startsWith('new-')) {
-                // Nova entrega
-                entregasRef.push(entrega)
+                
+                // Adicionar totais ao objeto de dados
+                data['totalHours'] = document.getElementById('totalHours').textContent;
+                data['totalOvertime'] = document.getElementById('totalOvertime').textContent;
+                data['daysWorked'] = document.getElementById('daysWorked').textContent;
+                data['lastUpdate'] = new Date().toISOString();
+                
+                // Salvar no Firebase
+                const ref = database.ref(`folha_ponto/${employee}/SETEMBRO_2025`);
+                ref.set(data)
                     .then(() => {
-                        linha.remove();
+                        showNotification('Dados salvos com sucesso no Firebase!', 'success');
                     })
-                    .catch(error => {
-                        console.error("Erro ao salvar:", error);
-                        alert("Erro ao salvar os dados. Por favor, tente novamente.");
+                    .catch((error) => {
+                        console.error('Erro ao salvar dados:', error);
+                        showNotification('Erro ao salvar dados: ' + error.message, 'error');
                     });
-            } else {
-                // Edição de entrega existente
-                entregasRef.child(id).update(entrega)
-                    .catch(error => {
-                        console.error("Erro ao atualizar:", error);
-                        alert("Erro ao atualizar os dados. Por favor, tente novamente.");
-                    });
+                    
+            } catch (error) {
+                console.error('Erro no processo de salvamento:', error);
+                showNotification('Erro no processo de salvamento: ' + error.message, 'error');
             }
         }
         
-        // Função para editar uma linha existente
-        function editarLinha(botao) {
-            const linha = botao.closest('tr');
-            const id = linha.dataset.id;
-            const celulas = linha.cells;
-            
-            // Salva o conteúdo original para possível cancelamento
-            linha.dataset.originalContent = linha.innerHTML;
-            
-            // Pega a data no formato DD/MM/YYYY e converte para YYYY-MM-DD
-            const dataDisplay = celulas[0].textContent;
-            const [dia, mes, ano] = dataDisplay.split('/');
-            const dataFormatada = `${ano}-${mes}-${dia}`;
-            
-            // Converte o prazo para o formato do input (se existir)
-            const prazoInput = celulas[11].textContent;
-            let prazoFormatado = '';
-            if (prazoInput !== '-') {
-                const [diaP, mesP, anoP] = prazoInput.split('/');
-                prazoFormatado = `${anoP}-${mesP}-${diaP}`;
+        // Carregar dados do Firebase
+        function loadData() {
+            try {
+                const employee = document.getElementById('employee').value;
+                const ref = database.ref(`folha_ponto/${employee}/SETEMBRO_2025`);
+                
+                ref.once('value')
+                    .then((snapshot) => {
+                        if (snapshot.exists()) {
+                            const data = snapshot.val();
+                            
+                            // Preencher os campos de entrada
+                            for (const key in data) {
+                                if (key.startsWith('entrada_') || key.startsWith('intervalo-inicio_') || 
+                                    key.startsWith('intervalo-fim_') || key.startsWith('saida_')) {
+                                    const parts = key.split('_');
+                                    const fieldName = parts[0];
+                                    const day = parts[1];
+                                    
+                                    const input = document.querySelector(`input[name="${fieldName}"][data-day="${day}"]`);
+                                    if (input) {
+                                        input.value = data[key];
+                                    }
+                                }
+                            }
+                            
+                            // Recalcular todos os dias preenchidos
+                            recalculateAllDays();
+                            
+                            showNotification('Dados carregados com sucesso!', 'success');
+                        } else {
+                            showNotification('Nenhum dado salvo encontrado para este funcionário.', 'error');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Erro ao carregar dados:', error);
+                        showNotification('Erro ao carregar dados: ' + error.message, 'error');
+                    });
+                    
+            } catch (error) {
+                console.error('Erro no processo de carregamento:', error);
+                showNotification('Erro no processo de carregamento: ' + error.message, 'error');
             }
+        }
+        
+        // Recalcular todos os dias
+        function recalculateAllDays() {
+            const rows = document.querySelectorAll('#timeSheet tbody tr');
             
-            // Obtém o status atual
-            const statusClass = celulas[10].className;
-            const statusAtual = statusClass.replace('status-', '');
-            
-            // Cria os campos editáveis
-            linha.className = 'edit-row';
-            linha.innerHTML = `
-                <td><input type="date" value="${dataFormatada}"></td>
-                <td>
-                    <select>
-                        <option value="MARCIA" ${celulas[1].textContent === 'MARCIA' ? 'selected' : ''}>MARCIA</option>
-                        <option value="MARIANE" ${celulas[1].textContent === 'MARIANE' ? 'selected' : ''}>MARIANE</option>
-                        <option value="JEISE" ${celulas[1].textContent === 'JEISE' ? 'selected' : ''}>JEISE</option>
-                        <option value="MONICA" ${celulas[1].textContent === 'MONICA' ? 'selected' : ''}>MONICA</option>
-                        <option value="ANA" ${celulas[1].textContent === 'ANA' ? 'selected' : ''}>ANA</option>
-                        <option value="MARIVAL" ${celulas[1].textContent === 'MARIVAL' ? 'selected' : ''}>MARIVAL</option>
-                        <option value="GENIVALDO" ${celulas[1].textContent === 'GENIVALDO' ? 'selected' : ''}>GENIVALDO</option>
-                    </select>
-                </td>
-                <td><input type="text" value="${celulas[2].textContent}"></td>
-                <td><input type="text" value="${formatarTelefoneDisplay(celulas[3].querySelector('a').textContent)}"></td>
-                <td><input type="text" value="${celulas[4].textContent}"></td>
-                <td><input type="text" value="${formatarTelefoneDisplay(celulas[5].querySelector('a').textContent)}"></td>
-                <td><input type="text" value="${celulas[6].textContent}"></td>
-                <td><input type="text" value="${celulas[7].textContent}"></td>
-                <td><input type="text" value="${celulas[8].textContent === '-' ? '' : celulas[8].textContent}"></td>
-                <td><input type="text" value="${celulas[9].textContent === '-' ? '' : celulas[9].textContent}"></td>
-                <td>
-                    <select>
-                        <option value="coletando" ${statusAtual === 'coletando' ? 'selected' : ''}>Coletando</option>
-                        <option value="transito" ${statusAtual === 'transito' ? 'selected' : ''}>Em trânsito</option>
-                        <option value="parado" ${statusAtual === 'parado' ? 'selected' : ''}>Parado</option>
-                        <option value="entregue" ${statusAtual === 'entregue' ? 'selected' : ''}>Entregue</option>
-                    </select>
-                </td>
-                <td><input type="date" value="${prazoFormatado}"></td>
-                <td><input type="text" value="${celulas[12].textContent === '-' ? '' : celulas[12].textContent}"></td>
-                <td class="action-buttons">
-                    <button class="save-btn" onclick="salvarLinha(this)">Salvar</button>
-                    <button class="cancel-btn" onclick="cancelarEdicao(this)">Cancelar</button>
-                </td>
-            `;
-            
-            // Adiciona máscara aos campos de telefone
-            linha.querySelectorAll('input[type="text"]').forEach(input => {
-                if (input.value.includes('(')) {
-                    input.addEventListener('input', formatarTelefoneInput);
-                } else if (input.value.startsWith('R$')) {
-                    input.addEventListener('input', formatarMoedaInput);
+            rows.forEach(row => {
+                const entrada = row.querySelector('input[name="entrada"]').value;
+                const intervaloInicio = row.querySelector('input[name="intervalo-inicio"]').value;
+                const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
+                const saida = row.querySelector('input[name="saida"]').value;
+                
+                if (entrada && intervaloInicio && intervaloFim && saida) {
+                    // Converter para minutos
+                    const entradaMin = timeToMinutes(entrada);
+                    const intervaloInicioMin = timeToMinutes(intervaloInicio);
+                    const intervaloFimMin = timeToMinutes(intervaloFim);
+                    const saidaMin = timeToMinutes(saida);
+                    
+                    // Calcular horas trabalhadas (descontando o intervalo)
+                    const horasTrabalhadasMin = (saidaMin - entradaMin) - (intervaloFimMin - intervaloInicioMin);
+                    
+                    // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
+                    const horasExtrasMin = Math.max(0, horasTrabalhadasMin - 480);
+                    const horasNormaisMin = horasTrabalhadasMin - horasExtrasMin;
+                    
+                    // Atualizar totais do dia
+                    row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
+                    row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
                 }
             });
             
-            // Foca no primeiro campo
-            linha.querySelector('input').focus();
+            // Recalcular totais mensais
+            calculateMonthlyTotals();
         }
         
-        // Função para cancelar edição
-        function cancelarEdicao(botao) {
-            const linha = botao.closest('tr');
-            
-            if (linha.dataset.originalContent) {
-                // Restaura o conteúdo original (edição)
-                linha.innerHTML = linha.dataset.originalContent;
-                linha.className = '';
-            } else {
-                // Remove a linha (adição nova)
-                linha.remove();
-            }
-        }
-        
-        // Função para excluir uma linha (agora com verificação de senha)
-        function excluirLinha(botao) {
-            const id = botao.closest('tr').dataset.id;
-            showPasswordModal(id);
-        }
-        
-        // Função para atualizar o status diretamente
-        function atualizarStatus(select, id) {
-            const novoStatus = select.value;
-            entregasRef.child(id).update({
-                status: novoStatus,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            })
-            .catch(error => {
-                console.error("Erro ao atualizar status:", error);
-                alert("Erro ao atualizar o status. Por favor, tente novamente.");
-            });
-        }
-        
-        // Função para formatar telefone durante a digitação
-        function formatarTelefoneInput(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length > 0) {
-                value = '(' + value;
-            }
-            if (value.length > 3) {
-                value = value.substring(0, 3) + ') ' + value.substring(3);
-            }
-            if (value.length > 10) {
-                value = value.substring(0, 10) + '-' + value.substring(10, 15);
-            }
-            e.target.value = value;
-        }
-        
-        // Função para formatar telefone para exibição
-        function formatarTelefoneDisplay(numero) {
-            const nums = numero.replace(/\D/g, '');
-            return `(${nums.substring(0,2)}) ${nums.substring(2,7)}-${nums.substring(7,11)}`;
-        }
-        
-        // Função para formatar moeda durante a digitação
-        function formatarMoedaInput(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            value = (value / 100).toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-            e.target.value = 'R$ ' + value;
-        }
-        
-        // Função para carregar dados do Firebase
-        function carregarDados() {
-            entregasRef.on('value', (snapshot) => {
-                const entregas = snapshot.val() || {};
-                const tabela = document.getElementById('corpoTabela');
-                tabela.innerHTML = '';
-                
-                Object.keys(entregas).forEach(id => {
-                    const entrega = entregas[id];
-                    
-                    // Formata a data diretamente do valor salvo (formato YYYY-MM-DD)
-                    const [ano, mes, dia] = entrega.data.split('-');
-                    const dataFormatada = `${dia}/${mes}/${ano}`;
-                    
-                    let prazoFormatado = '-';
-                    if (entrega.prazo) {
-                        const [anoP, mesP, diaP] = entrega.prazo.split('-');
-                        prazoFormatado = `${diaP}/${mesP}/${anoP}`;
-                    }
-                    
-                    const row = document.createElement('tr');
-                    row.dataset.id = id;
-                    row.innerHTML = `
-                        <td>${dataFormatada}</td>
-                        <td>${entrega.vendedor}</td>
-                        <td>${entrega.cliente}</td>
-                        <td><a href="#" class="whatsapp-link" onclick="copiarNumero('${entrega.telefoneCliente}')">${formatarTelefoneDisplay(entrega.telefoneCliente)}</a></td>
-                        <td>${entrega.motorista}</td>
-                        <td><a href="#" class="whatsapp-link" onclick="copiarNumero('${entrega.telefoneMotorista}')">${formatarTelefoneDisplay(entrega.telefoneMotorista)}</a></td>
-                        <td>${entrega.origem}</td>
-                        <td>${entrega.destino}</td>
-                        <td>${entrega.freteEmpresa ? 'R$ ' + entrega.freteEmpresa.toFixed(2).replace('.', ',') : '-'}</td>
-                        <td>${entrega.freteMotorista ? 'R$ ' + entrega.freteMotorista.toFixed(2).replace('.', ',') : '-'}</td>
-                        <td class="status-${entrega.status}">
-                            <select class="status-select" onchange="atualizarStatus(this, '${id}')">
-                                <option value="coletando" ${entrega.status === 'coletando' ? 'selected' : ''}>Coletando</option>
-                                <option value="transito" ${entrega.status === 'transito' ? 'selected' : ''}>Em trânsito</option>
-                                <option value="parado" ${entrega.status === 'parado' ? 'selected' : ''}>Parado</option>
-                                <option value="entregue" ${entrega.status === 'entregue' ? 'selected' : ''}>Entregue</option>
-                            </select>
-                        </td>
-                        <td>${prazoFormatado}</td>
-                        <td>${entrega.observacao || '-'}</td>
-                        <td class="action-buttons">
-                            <button class="edit-btn" onclick="editarLinha(this)">Editar</button>
-                            <button class="delete-btn" onclick="excluirLinha(this)">Excluir</button>
-                        </td>
-                    `;
-                    
-                    tabela.appendChild(row);
+        // Limpar dados
+        function clearData() {
+            if (confirm('Tem certeza que deseja limpar todos os dados?')) {
+                const inputs = document.querySelectorAll('input[type="time"]');
+                inputs.forEach(input => {
+                    input.value = '';
                 });
                 
-                proximoId = Object.keys(entregas).length + 1;
-            });
-        }
-        
-        // Função para filtrar a tabela
-        function filtrarTabela() {
-            const vendedor = document.getElementById('vendedorFilter').value;
-            const status = document.getElementById('statusFilter').value;
-            
-            const linhas = document.querySelectorAll('#corpoTabela tr:not(.edit-row)');
-            
-            linhas.forEach(linha => {
-                const colVendedor = linha.cells[1].textContent;
-                const colStatus = linha.cells[10].className.replace('status-', '');
-                
-                const mostraLinha = 
-                    (vendedor === '' || colVendedor === vendedor) &&
-                    (status === '' || colStatus === status);
-                
-                linha.style.display = mostraLinha ? '' : 'none';
-            });
-        }
-        
-        // Função para carregar dados do mês selecionado
-        function carregarMes() {
-            const mes = document.getElementById('mesFilter').value;
-            const ano = document.getElementById('anoFilter').value;
-            
-            // Aqui você implementaria a filtragem por mês/ano
-            alert(`Filtrando por ${mes}/${ano}...`);
-        }
-        
-        // Função para exportar para Excel
-        function exportarExcel() {
-            const tabela = document.getElementById('tabelaEntregas');
-            const linhasVisiveis = Array.from(tabela.querySelectorAll('tbody tr:not(.edit-row)'))
-                .filter(linha => linha.style.display !== 'none');
-            
-            if (linhasVisiveis.length === 0) {
-                alert('Nenhum dado para exportar!');
-                return;
-            }
-            
-            // Criar uma nova planilha
-            const wb = XLSX.utils.book_new();
-            
-            // Converter a tabela para uma matriz de dados
-            const dados = [];
-            
-            // Adicionar cabeçalhos
-            const cabecalhos = Array.from(tabela.querySelectorAll('thead th'))
-                .map(th => th.textContent);
-            // Remove a coluna de ações
-            cabecalhos.pop();
-            dados.push(cabecalhos);
-            
-            // Adicionar linhas de dados (apenas as visíveis)
-            linhasVisiveis.forEach(linha => {
-                const celulas = Array.from(linha.cells);
-                const linhaDados = celulas.map(celula => {
-                    // Remove os links de WhatsApp, mantendo apenas o texto
-                    if (celula.querySelector('.whatsapp-link')) {
-                        return celula.querySelector('.whatsapp-link').textContent;
-                    }
-                    // Pega o valor selecionado do status
-                    if (celula.querySelector('.status-select')) {
-                        return celula.querySelector('.status-select').value;
-                    }
-                    return celula.textContent;
+                const totals = document.querySelectorAll('.total-cell, .overtime-cell');
+                totals.forEach(element => {
+                    element.textContent = '00:00';
                 });
-                // Remove a coluna de ações
-                linhaDados.pop();
-                dados.push(linhaDados);
-            });
-            
-            // Criar planilha
-            const ws = XLSX.utils.aoa_to_sheet(dados);
-            
-            // Adicionar planilha ao livro
-            XLSX.utils.book_append_sheet(wb, ws, "Entregas");
-            
-            // Gerar arquivo Excel
-            const nomeArquivo = `entregas_${document.getElementById('mesFilter').value}_${document.getElementById('anoFilter').value}.xlsx`;
-            XLSX.writeFile(wb, nomeArquivo);
+                
+                calculateMonthlyTotals();
+                showNotification('Dados limpos com sucesso!', 'success');
+            }
         }
         
-        // Adicionar eventos aos filtros
-        document.getElementById('vendedorFilter').addEventListener('change', filtrarTabela);
-        document.getElementById('statusFilter').addEventListener('change', filtrarTabela);
+        // Exportar para Excel
+        function exportToExcel() {
+            try {
+                const employee = document.getElementById('employee').value;
+                const exportFormat = document.getElementById('exportFormat').value;
+                const includeSignatures = document.getElementById('includeSignatures').value === 'yes';
+                
+                // Preparar dados para exportação
+                let data = [];
+                const rows = document.querySelectorAll('#timeSheet tbody tr');
+                
+                // Cabeçalhos
+                data.push([
+                    'DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 
+                    'FIM INTERVALO', 'SAÍDA', 'TOTAL DIÁRIO', 'HORA EXTRA'
+                ]);
+                
+                // Dados das linhas
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const rowData = [
+                        cells[0].textContent,
+                        cells[1].textContent,
+                        row.querySelector('input[name="entrada"]').value,
+                        row.querySelector('input[name="intervalo-inicio"]').value,
+                        row.querySelector('input[name="intervalo-fim"]').value,
+                        row.querySelector('input[name="saida"]').value,
+                        cells[6].textContent,
+                        cells[7].textContent
+                    ];
+                    data.push(rowData);
+                });
+                
+                // Adicionar totais
+                data.push([]);
+                data.push(['RESUMO MENSAL', '']);
+                data.push(['Total de Horas Trabalhadas:', document.getElementById('totalHours').textContent]);
+                data.push(['Total de Horas Extras:', document.getElementById('totalOvertime').textContent]);
+                data.push(['Dias Trabalhados:', document.getElementById('daysWorked').textContent]);
+                data.push(['Média Diária:', document.getElementById('dailyAverage').textContent]);
+                
+                // Adicionar assinaturas se solicitado
+                if (includeSignatures) {
+                    data.push([]);
+                    data.push(['ASSINATURAS', '']);
+                    data.push(['Empregador(a):', '']);
+                    data.push(['', '']);
+                    data.push(['Empregado(a):', '']);
+                }
+                
+                // Criar workbook
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Folha de Ponto");
+                
+                // Gerar nome do arquivo
+                const fileName = `Folha_Ponto_${employee}_Setembro_2025.${exportFormat}`;
+                
+                // Exportar
+                if (exportFormat === 'xlsx') {
+                    XLSX.writeFile(wb, fileName);
+                } else {
+                    // CSV
+                    const csvContent = XLSX.utils.sheet_to_csv(ws);
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", fileName);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+                
+                showNotification('Exportação realizada com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('Erro na exportação:', error);
+                showNotification('Erro na exportação: ' + error.message, 'error');
+            }
+        }
         
-        // Definir mês atual como padrão
-        const dataAtual = new Date();
-        document.getElementById('mesFilter').value = (dataAtual.getMonth() + 1).toString().padStart(2, '0');
-        document.getElementById('anoFilter').value = dataAtual.getFullYear().toString();
-        
-        // Carrega os dados quando a página é carregada
-        document.addEventListener('DOMContentLoaded', carregarDados);
+        // Mostrar notificação
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification ' + type;
+            
+            setTimeout(() => {
+                notification.className = 'notification';
+            }, 3000);
+        }
     </script>
 </body>
 </html>
