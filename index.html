@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -36,6 +36,86 @@
             padding: 20px;
         }
         
+        /* Modal de Login */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .login-header h2 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .login-form .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .login-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .login-form input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: #2980b9;
+        }
+        
+        .login-error {
+            color: var(--accent);
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
         .container {
             max-width: 1280px;
             margin: 0 auto;
@@ -50,6 +130,30 @@
             color: var(--white);
             padding: 20px;
             text-align: center;
+            position: relative;
+        }
+        
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logout-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
         }
         
         .logo {
@@ -331,6 +435,10 @@
             .controls {
                 justify-content: center;
             }
+            
+            .user-info, .logout-btn {
+                display: none;
+            }
         }
         
         @media (max-width: 992px) {
@@ -363,156 +471,192 @@
                 justify-content: center;
                 gap: 10px;
             }
+            
+            .user-info {
+                position: static;
+                justify-content: center;
+                margin-top: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">
-                <i class="fas fa-clock"></i>
-                <div>
-                    <h1>CONTROLE DE PONTO ELETRÔNICO</h1>
-                    <div class="periodo">Setembro 2025</div>
+    <!-- Modal de Login -->
+    <div id="loginModal" class="login-modal">
+        <div class="login-container">
+            <div class="login-header">
+                <h2><i class="fas fa-lock"></i> Acesso Restrito</h2>
+                <p>Informe suas credenciais para acessar o sistema</p>
+            </div>
+            <form class="login-form" id="loginForm">
+                <div class="form-group">
+                    <label for="email">E-mail:</label>
+                    <input type="email" id="email" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha:</label>
+                    <input type="password" id="password" required placeholder="Sua senha">
+                </div>
+                <button type="submit" class="login-btn">Entrar no Sistema</button>
+                <div id="loginError" class="login-error">
+                    <i class="fas fa-exclamation-circle"></i> E-mail ou senha incorretos
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="appContent" class="hidden">
+        <div class="container">
+            <header>
+                <div class="user-info">
+                    <span id="userEmail"></span>
+                    <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+                </div>
+                <div class="logo">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <h1>CONTROLE DE PONTO ELETRÔNICO</h1>
+                        <div class="periodo">Setembro 2025</div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="controls">
+                <div class="employee-selector">
+                    <label for="employee"><i class="fas fa-user"></i> Funcionário:</label>
+                    <select id="employee">
+                        <option value="JOSE_AUGUSTO_DA_SILVA_SANTOS">JOSE AUGUSTO DA SILVA SANTOS</option>
+                        <option value="FRANCISCO_EUDES_DE_FREITAS">FRANCISCO EUDES DE FREITAS</option>
+                        <option value="MARCOS_ANTONIO_DA_ANUNCIACAO_COSTA">MARCOS ANTONIO DA ANUNCIACAO COSTA</option>
+                        <option value="RAFAEL_ARAUJO_DE_LIMA">RAFAEL ARAUJO DE LIMA</option>
+                        <option value="WESLEY_CAIQUE_DOS_SANTOS_BARBOSA">WESLEY CAIQUE DOS SANTOS BARBOSA</option>
+                    </select>
+                </div>
+                
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <button class="btn btn-success" onclick="saveData()">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button class="btn btn-excel" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button class="btn btn-danger" onclick="clearData()">
+                        <i class="fas fa-trash"></i> Limpar
+                    </button>
                 </div>
             </div>
-        </header>
-        
-        <div class="controls">
-            <div class="employee-selector">
-                <label for="employee"><i class="fas fa-user"></i> Funcionário:</label>
-                <select id="employee">
-                    <option value="JOSE_AUGUSTO_DA_SILVA_SANTOS">JOSE AUGUSTO DA SILVA SANTOS</option>
-                    <option value="FRANCISCO_EUDES_DE_FREITAS">FRANCISCO EUDES DE FREITAS</option>
-                    <option value="MARCOS_ANTONIO_DA_ANUNCIACAO_COSTA">MARCOS ANTONIO DA ANUNCIACAO COSTA</option>
-                    <option value="RAFAEL_ARAUJO_DE_LIMA">RAFAEL ARAUJO DE LIMA</option>
-                    <option value="WESLEY_CAIQUE_DOS_SANTOS_BARBOSA">WESLEY CAIQUE DOS SANTOS BARBOSA</option>
-                </select>
-            </div>
             
-            <div class="actions">
-                <button class="btn btn-primary" onclick="window.print()">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-                <button class="btn btn-success" onclick="saveData()">
-                    <i class="fas fa-save"></i> Salvar
-                </button>
-                <button class="btn btn-excel" onclick="exportToExcel()">
-                    <i class="fas fa-file-excel"></i> Exportar Excel
-                </button>
-                <button class="btn btn-danger" onclick="clearData()">
-                    <i class="fas fa-trash"></i> Limpar
-                </button>
-            </div>
-        </div>
-        
-        <div class="sheet-container">
-            <table id="timeSheet">
-                <thead>
-                    <tr>
-                        <th>DATA</th>
-                        <th>DIA</th>
-                        <th>ENTRADA</th>
-                        <th>INÍCIO INTERVALO</th>
-                        <th>FIM INTERVALO</th>
-                        <th>SAÍDA</th>
-                        <th>TOTAL DIÁRIO</th>
-                        <th>HORA EXTRA</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- JavaScript will generate the rows here -->
-                </tbody>
-            </table>
-            
-            <div class="summary">
-                <div class="summary-card">
-                    <h3><i class="fas fa-chart-line"></i> RESUMO DO MÊS</h3>
-                    <div class="summary-item">
-                        <span>Total de Horas Trabalhadas:</span>
-                        <span id="totalHours">00:00</span>
+            <div class="sheet-container">
+                <table id="timeSheet">
+                    <thead>
+                        <tr>
+                            <th>DATA</th>
+                            <th>DIA</th>
+                            <th>ENTRADA</th>
+                            <th>INÍCIO INTERVALO</th>
+                            <th>FIM INTERVALO</th>
+                            <th>SAÍDA</th>
+                            <th>TOTAL DIÁRIO</th>
+                            <th>HORA EXTRA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- JavaScript will generate the rows here -->
+                    </tbody>
+                </table>
+                
+                <div class="summary">
+                    <div class="summary-card">
+                        <h3><i class="fas fa-chart-line"></i> RESUMO DO MÊS</h3>
+                        <div class="summary-item">
+                            <span>Total de Horas Trabalhadas:</span>
+                            <span id="totalHours">00:00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Total de Horas Extras:</span>
+                            <span id="totalOvertime">00:00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Dias Trabalhados:</span>
+                            <span id="daysWorked">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Média Diária:</span>
+                            <span id="dailyAverage">00:00</span>
+                        </div>
                     </div>
-                    <div class="summary-item">
-                        <span>Total de Horas Extras:</span>
-                        <span id="totalOvertime">00:00</span>
-                    </div>
-                    <div class="summary-item">
-                        <span>Dias Trabalhados:</span>
-                        <span id="daysWorked">0</span>
-                    </div>
-                    <div class="summary-item">
-                        <span>Média Diária:</span>
-                        <span id="dailyAverage">00:00</span>
+                    
+                    <div class="summary-card">
+                        <h3><i class="fas fa-info-circle"></i> INFORMAÇÕES</h3>
+                        <div class="summary-item">
+                            <span>Jornada Padrão:</span>
+                            <span>8 horas/dia</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Intervalo Mínimo:</span>
+                            <span>1 hora</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Dias Úteis:</span>
+                            <span id="businessDays">22</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Status:</span>
+                            <span id="status">Em andamento</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="summary-card">
-                    <h3><i class="fas fa-info-circle"></i> INFORMAÇÕES</h3>
-                    <div class="summary-item">
-                        <span>Jornada Padrão:</span>
-                        <span>8 horas/dia</span>
+                <div class="export-options">
+                    <h3><i class="fas fa-cog"></i> Opções de Exportação</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div class="option-group">
+                            <label for="exportFormat">Formato de Exportação:</label>
+                            <select id="exportFormat">
+                                <option value="xlsx">Excel (.xlsx)</option>
+                                <option value="csv">CSV (.csv)</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="exportRange">Período de Exportação:</label>
+                            <select id="exportRange">
+                                <option value="current">Mês Atual</option>
+                                <option value="all">Todos os Dados</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label for="includeSignatures">Incluir Assinaturas:</label>
+                            <select id="includeSignatures">
+                                <option value="yes">Sim</option>
+                                <option value="no">Não</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="summary-item">
-                        <span>Intervalo Mínimo:</span>
-                        <span>1 hora</span>
-                    </div>
-                    <div class="summary-item">
-                        <span>Dias Úteis:</span>
-                        <span id="businessDays">22</span>
-                    </div>
-                    <div class="summary-item">
-                        <span>Status:</span>
-                        <span id="status">Em andamento</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="export-options">
-                <h3><i class="fas fa-cog"></i> Opções de Exportação</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div class="option-group">
-                        <label for="exportFormat">Formato de Exportação:</label>
-                        <select id="exportFormat">
-                            <option value="xlsx">Excel (.xlsx)</option>
-                            <option value="csv">CSV (.csv)</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="exportRange">Período de Exportação:</label>
-                        <select id="exportRange">
-                            <option value="current">Mês Atual</option>
-                            <option value="all">Todos os Dados</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="includeSignatures">Incluir Assinaturas:</label>
-                        <select id="includeSignatures">
-                            <option value="yes">Sim</option>
-                            <option value="no">Não</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="signature-area">
-                <div class="signature-box">
-                    <p>Empregador(a)</p>
-                    <div class="signature-line"></div>
-                    <p>Nome e Assinatura</p>
                 </div>
                 
-                <div class="signature-box">
-                    <p>Empregado(a)</p>
-                    <div class="signature-line"></div>
-                    <p>Nome e Assinatura</p>
+                <div class="signature-area">
+                    <div class="signature-box">
+                        <p>Empregador(a)</p>
+                        <div class="signature-line"></div>
+                        <p>Nome e Assinatura</p>
+                    </div>
+                    
+                    <div class="signature-box">
+                        <p>Empregado(a)</p>
+                        <div class="signature-line"></div>
+                        <p>Nome e Assinatura</p>
+                    </div>
                 </div>
             </div>
+            
+            <footer>
+                <p>Sistema de Controle de Ponto Eletrônico | Desenvolvido para Gestão de Recursos Humanos</p>
+                <p>© 2025 - Todos os direitos reservados</p>
+            </footer>
         </div>
-        
-        <footer>
-            <p>Sistema de Controle de Ponto Eletrônico | Desenvolvido para Gestão de Recursos Humanos</p>
-            <p>© 2025 - Todos os direitos reservados</p>
-        </footer>
     </div>
 
     <div id="notification" class="notification"></div>
@@ -532,6 +676,7 @@
         // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
         
         // Variáveis globais
         let currentEmployee = document.getElementById('employee').value;
@@ -540,8 +685,56 @@
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
         
+        // Verificar estado de autenticação
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Usuário autenticado
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('appContent').classList.remove('hidden');
+                document.getElementById('userEmail').textContent = user.email;
+                
+                // Inicializar a aplicação
+                initializeApp();
+            } else {
+                // Usuário não autenticado
+                document.getElementById('loginModal').style.display = 'flex';
+                document.getElementById('appContent').classList.add('hidden');
+            }
+        });
+        
+        // Manipular formulário de login
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginError = document.getElementById('loginError');
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Login bem-sucedido - o listener onAuthStateChanged irá tratar
+                    loginError.style.display = 'none';
+                })
+                .catch((error) => {
+                    console.error('Erro de autenticação:', error);
+                    loginError.style.display = 'block';
+                });
+        });
+        
+        // Função de logout
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    showNotification('Logout realizado com sucesso!', 'success');
+                })
+                .catch((error) => {
+                    console.error('Erro ao fazer logout:', error);
+                    showNotification('Erro ao fazer logout: ' + error.message, 'error');
+                });
+        }
+        
         // Inicializar a aplicação
-        document.addEventListener('DOMContentLoaded', function() {
+        function initializeApp() {
             // Gerar a tabela
             generateTimeSheet();
             
@@ -553,7 +746,7 @@
                 currentEmployee = this.value;
                 loadData();
             });
-        });
+        }
         
         // Gerar a folha de ponto
         function generateTimeSheet() {
