@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Folha de Ponto | Firebase + Export Excel</title>
+    <title>Sistema de Folha de Ponto | Com Viagem e Folga</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -20,6 +20,8 @@
             --warning: #f39c12;
             --gray: #95a5a6;
             --white: #ffffff;
+            --travel: #9b59b6;
+            --dayoff: #e67e22;
         }
         
         * {
@@ -117,7 +119,7 @@
         }
         
         .container {
-            max-width: 1280px;
+            max-width: 1400px;
             margin: 0 auto;
             background: var(--white);
             border-radius: 10px;
@@ -237,6 +239,16 @@
             background: #165B34;
         }
         
+        .btn-travel {
+            background: var(--travel);
+            color: white;
+        }
+        
+        .btn-dayoff {
+            background: var(--dayoff);
+            color: white;
+        }
+        
         .employee-selector {
             display: flex;
             align-items: center;
@@ -303,6 +315,31 @@
         
         .weekend {
             background-color: #fff0f0;
+        }
+        
+        .travel-day {
+            background-color: #f4ecf7;
+        }
+        
+        .day-off {
+            background-color: #fef9e7;
+        }
+        
+        .day-options {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .day-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+        }
+        
+        .day-option input {
+            width: auto;
         }
         
         .summary {
@@ -441,6 +478,16 @@
             }
         }
         
+        @media (max-width: 1200px) {
+            table {
+                font-size: 0.9rem;
+            }
+            
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+        
         @media (max-width: 992px) {
             .summary {
                 grid-template-columns: 1fr;
@@ -477,6 +524,50 @@
                 justify-content: center;
                 margin-top: 10px;
             }
+            
+            table {
+                font-size: 0.8rem;
+            }
+            
+            th, td {
+                padding: 6px 8px;
+            }
+            
+            input[type="time"] {
+                padding: 4px;
+            }
+        }
+        
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .legend-weekend {
+            background-color: #fff0f0;
+        }
+        
+        .legend-travel {
+            background-color: #f4ecf7;
+        }
+        
+        .legend-dayoff {
+            background-color: #fef9e7;
         }
     </style>
 </head>
@@ -550,6 +641,21 @@
             </div>
             
             <div class="sheet-container">
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color legend-weekend"></div>
+                        <span>Final de Semana</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-travel"></div>
+                        <span>Viagem</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-dayoff"></div>
+                        <span>Folga</span>
+                    </div>
+                </div>
+                
                 <table id="timeSheet">
                     <thead>
                         <tr>
@@ -559,6 +665,7 @@
                             <th>INÍCIO INTERVALO</th>
                             <th>FIM INTERVALO</th>
                             <th>SAÍDA</th>
+                            <th>OPÇÕES</th>
                             <th>TOTAL DIÁRIO</th>
                             <th>HORA EXTRA</th>
                         </tr>
@@ -582,6 +689,14 @@
                         <div class="summary-item">
                             <span>Dias Trabalhados:</span>
                             <span id="daysWorked">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Dias de Viagem:</span>
+                            <span id="travelDays">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Dias de Folga:</span>
+                            <span id="dayoffDays">0</span>
                         </div>
                         <div class="summary-item">
                             <span>Média Diária:</span>
@@ -771,6 +886,16 @@
                     <td><input type="time" name="intervalo-inicio" data-day="${day}"></td>
                     <td><input type="time" name="intervalo-fim" data-day="${day}"></td>
                     <td><input type="time" name="saida" data-day="${day}"></td>
+                    <td class="day-options">
+                        <div class="day-option">
+                            <input type="checkbox" id="travel-${day}" name="travel" data-day="${day}">
+                            <label for="travel-${day}">Viagem</label>
+                        </div>
+                        <div class="day-option">
+                            <input type="checkbox" id="dayoff-${day}" name="dayoff" data-day="${day}">
+                            <label for="dayoff-${day}">Folga</label>
+                        </div>
+                    </td>
                     <td class="total-cell" id="total-${day}">00:00</td>
                     <td class="overtime-cell" id="overtime-${day}">00:00</td>
                 `;
@@ -785,13 +910,64 @@
             timeInputs.forEach(input => {
                 input.addEventListener('change', calculateHours);
             });
+            
+            // Adicionar event listeners para as opções de dia
+            const optionInputs = document.querySelectorAll('input[name="travel"], input[name="dayoff"]');
+            optionInputs.forEach(input => {
+                input.addEventListener('change', handleDayOptionChange);
+            });
         }
         
-        // Calcular horas do dia
+        // Manipular mudanças nas opções de dia (viagem/folga)
+        function handleDayOptionChange(event) {
+            const checkbox = event.target;
+            const day = checkbox.getAttribute('data-day');
+            const row = checkbox.closest('tr');
+            const isTravel = checkbox.name === 'travel' && checkbox.checked;
+            const isDayOff = checkbox.name === 'dayoff' && checkbox.checked;
+            
+            // Remover outras classes primeiro
+            row.classList.remove('travel-day', 'day-off');
+            
+            // Aplicar a classe apropriada
+            if (isTravel) {
+                row.classList.add('travel-day');
+                // Desmarcar folga se viagem estiver marcada
+                row.querySelector('input[name="dayoff"]').checked = false;
+            } else if (isDayOff) {
+                row.classList.add('day-off');
+                // Desmarcar viagem se folga estiver marcada
+                row.querySelector('input[name="travel"]').checked = false;
+                
+                // Preencher automaticamente com 8 horas de trabalho para folga
+                row.querySelector('.total-cell').textContent = '08:00';
+                row.querySelector('.overtime-cell').textContent = '00:00';
+            }
+            
+            // Recalcular horas
+            calculateDayHours(day);
+            
+            // Recalcular totais do mês
+            calculateMonthlyTotals();
+        }
+        
+        // Calcular horas do dia - FUNÇÃO CORRIGIDA
         function calculateHours(event) {
             const field = event.target;
             const day = field.getAttribute('data-day');
-            const row = field.parentElement.parentElement;
+            calculateDayHours(day);
+        }
+        
+        // Calcular horas para um dia específico
+        function calculateDayHours(day) {
+            const row = document.querySelector(`tr input[name="entrada"][data-day="${day}"]`).closest('tr');
+            const travelChecked = row.querySelector('input[name="travel"]').checked;
+            const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
+            
+            // Se for folga, já calculamos anteriormente
+            if (dayoffChecked) {
+                return;
+            }
             
             // Obter todos os valores de tempo para este dia
             const entrada = row.querySelector('input[name="entrada"]').value;
@@ -799,12 +975,18 @@
             const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
             const saida = row.querySelector('input[name="saida"]').value;
             
-            // Calcular apenas se todos os campos estiverem preenchidos
-            if (entrada && intervaloInicio && intervaloFim && saida) {
+            // Se for viagem, considerar 8 horas trabalhadas independentemente do horário
+            if (travelChecked && entrada && saida) {
+                row.querySelector('.total-cell').textContent = '08:00';
+                row.querySelector('.overtime-cell').textContent = '00:00';
+                calculateMonthlyTotals();
+                return;
+            }
+            
+            // Calcular apenas se entrada e saída estiverem preenchidas (mínimo necessário)
+            if (entrada && saida) {
                 // Converter para minutos
                 const entradaMin = timeToMinutes(entrada);
-                const intervaloInicioMin = timeToMinutes(intervaloInicio);
-                const intervaloFimMin = timeToMinutes(intervaloFim);
                 const saidaMin = timeToMinutes(saida);
                 
                 // Validar se os horários são lógicos
@@ -814,20 +996,30 @@
                     return;
                 }
                 
-                if (intervaloFimMin <= intervaloInicioMin) {
-                    showNotification('Fim do intervalo deve ser após o início', 'error');
-                    resetRow(row);
-                    return;
-                }
+                let horasTrabalhadasMin = saidaMin - entradaMin;
+                let intervaloMin = 0;
                 
-                if (intervaloInicioMin <= entradaMin || intervaloFimMin >= saidaMin) {
-                    showNotification('Intervalo deve estar dentro do período de trabalho', 'error');
-                    resetRow(row);
-                    return;
+                // Calcular intervalo se informado (pausa para almoço)
+                if (intervaloInicio && intervaloFim) {
+                    const intervaloInicioMin = timeToMinutes(intervaloInicio);
+                    const intervaloFimMin = timeToMinutes(intervaloFim);
+                    
+                    if (intervaloFimMin <= intervaloInicioMin) {
+                        showNotification('Fim do intervalo deve ser após o início', 'error');
+                        resetRow(row);
+                        return;
+                    }
+                    
+                    // Verificar se o intervalo está dentro do período de trabalho
+                    if (intervaloInicioMin < entradaMin || intervaloFimMin > saidaMin) {
+                        showNotification('Intervalo deve estar dentro do período de trabalho', 'error');
+                        resetRow(row);
+                        return;
+                    }
+                    
+                    intervaloMin = intervaloFimMin - intervaloInicioMin;
+                    horasTrabalhadasMin -= intervaloMin;
                 }
-                
-                // Calcular horas trabalhadas (descontando o intervalo)
-                const horasTrabalhadasMin = (saidaMin - entradaMin) - (intervaloFimMin - intervaloInicioMin);
                 
                 // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
                 const horasExtrasMin = Math.max(0, horasTrabalhadasMin - 480);
@@ -838,6 +1030,11 @@
                 row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
                 
                 // Recalcular totais do mês
+                calculateMonthlyTotals();
+            } else if ((entrada && !saida) || (!entrada && saida)) {
+                // Campos incompletos - limpar totais
+                row.querySelector('.total-cell').textContent = '00:00';
+                row.querySelector('.overtime-cell').textContent = '00:00';
                 calculateMonthlyTotals();
             }
         }
@@ -858,21 +1055,32 @@
             let totalMinutes = 0;
             let totalOvertimeMinutes = 0;
             let daysWorked = 0;
+            let travelDays = 0;
+            let dayoffDays = 0;
             
             // Encontrar todos os totais diários
-            const dailyTotals = document.querySelectorAll('.total-cell');
-            const dailyOvertimes = document.querySelectorAll('.overtime-cell');
+            const rows = document.querySelectorAll('#timeSheet tbody tr');
             
-            dailyTotals.forEach(element => {
-                if (element.textContent !== '00:00') {
-                    totalMinutes += timeToMinutes(element.textContent);
+            rows.forEach(row => {
+                const totalCell = row.querySelector('.total-cell');
+                const overtimeCell = row.querySelector('.overtime-cell');
+                const isTravel = row.querySelector('input[name="travel"]').checked;
+                const isDayOff = row.querySelector('input[name="dayoff"]').checked;
+                
+                if (isTravel) {
+                    travelDays++;
+                    totalMinutes += 480; // 8 horas em minutos
                     daysWorked++;
-                }
-            });
-            
-            dailyOvertimes.forEach(element => {
-                if (element.textContent !== '00:00') {
-                    totalOvertimeMinutes += timeToMinutes(element.textContent);
+                } else if (isDayOff) {
+                    dayoffDays++;
+                    totalMinutes += 480; // 8 horas em minutos
+                    // Subtrair 8 horas das horas extras
+                    totalOvertimeMinutes = Math.max(0, totalOvertimeMinutes - 480);
+                    daysWorked++;
+                } else if (totalCell.textContent !== '00:00') {
+                    totalMinutes += timeToMinutes(totalCell.textContent);
+                    totalOvertimeMinutes += timeToMinutes(overtimeCell.textContent);
+                    daysWorked++;
                 }
             });
             
@@ -883,6 +1091,8 @@
             document.getElementById('totalHours').textContent = minutesToTime(totalMinutes);
             document.getElementById('totalOvertime').textContent = minutesToTime(totalOvertimeMinutes);
             document.getElementById('daysWorked').textContent = daysWorked;
+            document.getElementById('travelDays').textContent = travelDays;
+            document.getElementById('dayoffDays').textContent = dayoffDays;
             document.getElementById('dailyAverage').textContent = minutesToTime(dailyAverage);
             
             // Atualizar status
@@ -915,19 +1125,22 @@
         function saveData() {
             try {
                 const employee = document.getElementById('employee').value;
-                const inputs = document.querySelectorAll('input[type="time"]');
+                const inputs = document.querySelectorAll('input[type="time"], input[type="checkbox"]');
                 const data = {};
                 
                 inputs.forEach(input => {
                     const day = input.getAttribute('data-day');
                     const fieldName = input.getAttribute('name');
-                    data[`${fieldName}_${day}`] = input.value;
+                    const value = input.type === 'checkbox' ? input.checked : input.value;
+                    data[`${fieldName}_${day}`] = value;
                 });
                 
                 // Adicionar totais ao objeto de dados
                 data['totalHours'] = document.getElementById('totalHours').textContent;
                 data['totalOvertime'] = document.getElementById('totalOvertime').textContent;
                 data['daysWorked'] = document.getElementById('daysWorked').textContent;
+                data['travelDays'] = document.getElementById('travelDays').textContent;
+                data['dayoffDays'] = document.getElementById('dayoffDays').textContent;
                 data['lastUpdate'] = new Date().toISOString();
                 
                 // Salvar no Firebase
@@ -961,14 +1174,28 @@
                             // Preencher os campos de entrada
                             for (const key in data) {
                                 if (key.startsWith('entrada_') || key.startsWith('intervalo-inicio_') || 
-                                    key.startsWith('intervalo-fim_') || key.startsWith('saida_')) {
+                                    key.startsWith('intervalo-fim_') || key.startsWith('saida_') ||
+                                    key.startsWith('travel_') || key.startsWith('dayoff_')) {
                                     const parts = key.split('_');
                                     const fieldName = parts[0];
                                     const day = parts[1];
                                     
                                     const input = document.querySelector(`input[name="${fieldName}"][data-day="${day}"]`);
                                     if (input) {
-                                        input.value = data[key];
+                                        if (input.type === 'checkbox') {
+                                            input.checked = data[key];
+                                            // Aplicar classes se necessário
+                                            if (data[key]) {
+                                                const row = input.closest('tr');
+                                                if (fieldName === 'travel') {
+                                                    row.classList.add('travel-day');
+                                                } else if (fieldName === 'dayoff') {
+                                                    row.classList.add('day-off');
+                                                }
+                                            }
+                                        } else {
+                                            input.value = data[key];
+                                        }
                                     }
                                 }
                             }
@@ -992,25 +1219,40 @@
             }
         }
         
-        // Recalcular todos os dias
+        // Recalcular todos os dias - FUNÇÃO CORRIGIDA
         function recalculateAllDays() {
             const rows = document.querySelectorAll('#timeSheet tbody tr');
             
             rows.forEach(row => {
+                const travelChecked = row.querySelector('input[name="travel"]').checked;
+                const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
                 const entrada = row.querySelector('input[name="entrada"]').value;
                 const intervaloInicio = row.querySelector('input[name="intervalo-inicio"]').value;
                 const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
                 const saida = row.querySelector('input[name="saida"]').value;
                 
-                if (entrada && intervaloInicio && intervaloFim && saida) {
+                if (travelChecked && entrada && saida) {
+                    // Para viagem, considerar 8 horas fixas
+                    row.querySelector('.total-cell').textContent = '08:00';
+                    row.querySelector('.overtime-cell').textContent = '00:00';
+                } else if (dayoffChecked) {
+                    // Para folga, considerar 8 horas fixas
+                    row.querySelector('.total-cell').textContent = '08:00';
+                    row.querySelector('.overtime-cell').textContent = '00:00';
+                } else if (entrada && saida) {
                     // Converter para minutos
                     const entradaMin = timeToMinutes(entrada);
-                    const intervaloInicioMin = timeToMinutes(intervaloInicio);
-                    const intervaloFimMin = timeToMinutes(intervaloFim);
                     const saidaMin = timeToMinutes(saida);
                     
-                    // Calcular horas trabalhadas (descontando o intervalo)
-                    const horasTrabalhadasMin = (saidaMin - entradaMin) - (intervaloFimMin - intervaloInicioMin);
+                    let horasTrabalhadasMin = saidaMin - entradaMin;
+                    
+                    // Calcular intervalo se informado
+                    if (intervaloInicio && intervaloFim) {
+                        const intervaloInicioMin = timeToMinutes(intervaloInicio);
+                        const intervaloFimMin = timeToMinutes(intervaloFim);
+                        const intervaloMin = intervaloFimMin - intervaloInicioMin;
+                        horasTrabalhadasMin -= intervaloMin;
+                    }
                     
                     // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
                     const horasExtrasMin = Math.max(0, horasTrabalhadasMin - 480);
@@ -1019,6 +1261,10 @@
                     // Atualizar totais do dia
                     row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
                     row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
+                } else {
+                    // Campos incompletos - limpar totais
+                    row.querySelector('.total-cell').textContent = '00:00';
+                    row.querySelector('.overtime-cell').textContent = '00:00';
                 }
             });
             
@@ -1029,9 +1275,16 @@
         // Limpar dados
         function clearData() {
             if (confirm('Tem certeza que deseja limpar todos os dados?')) {
-                const inputs = document.querySelectorAll('input[type="time"]');
+                const inputs = document.querySelectorAll('input[type="time"], input[type="checkbox"]');
                 inputs.forEach(input => {
-                    input.value = '';
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                        // Remover classes de estilo
+                        const row = input.closest('tr');
+                        row.classList.remove('travel-day', 'day-off');
+                    } else {
+                        input.value = '';
+                    }
                 });
                 
                 const totals = document.querySelectorAll('.total-cell, .overtime-cell');
@@ -1058,7 +1311,7 @@
                 // Cabeçalhos
                 data.push([
                     'DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 
-                    'FIM INTERVALO', 'SAÍDA', 'TOTAL DIÁRIO', 'HORA EXTRA'
+                    'FIM INTERVALO', 'SAÍDA', 'VIAGEM', 'FOLGA', 'TOTAL DIÁRIO', 'HORA EXTRA'
                 ]);
                 
                 // Dados das linhas
@@ -1071,8 +1324,10 @@
                         row.querySelector('input[name="intervalo-inicio"]').value,
                         row.querySelector('input[name="intervalo-fim"]').value,
                         row.querySelector('input[name="saida"]').value,
-                        cells[6].textContent,
-                        cells[7].textContent
+                        row.querySelector('input[name="travel"]').checked ? 'Sim' : 'Não',
+                        row.querySelector('input[name="dayoff"]').checked ? 'Sim' : 'Não',
+                        cells[7].textContent,
+                        cells[8].textContent
                     ];
                     data.push(rowData);
                 });
@@ -1083,6 +1338,8 @@
                 data.push(['Total de Horas Trabalhadas:', document.getElementById('totalHours').textContent]);
                 data.push(['Total de Horas Extras:', document.getElementById('totalOvertime').textContent]);
                 data.push(['Dias Trabalhados:', document.getElementById('daysWorked').textContent]);
+                data.push(['Dias de Viagem:', document.getElementById('travelDays').textContent]);
+                data.push(['Dias de Folga:', document.getElementById('dayoffDays').textContent]);
                 data.push(['Média Diária:', document.getElementById('dailyAverage').textContent]);
                 
                 // Adicionar assinaturas se solicitado
@@ -1137,6 +1394,20 @@
                 notification.className = 'notification';
             }, 3000);
         }
+        
+        // Verificação de erros de carregamento
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error("Erro: " + msg + "\nURL: " + url + "\nLinha: " + lineNo);
+            showNotification('Erro no carregamento da página. Verifique o console para detalhes.', 'error');
+            return false;
+        };
+        
+        // Verificar se o Firebase foi carregado corretamente
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof firebase === 'undefined') {
+                showNotification('Erro: Firebase não foi carregado corretamente. Verifique a conexão com a internet.', 'error');
+            }
+        });
     </script>
 </body>
 </html>
