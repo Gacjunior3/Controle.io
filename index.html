@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Folha de Ponto | Com Viagem e Folga</title>
+    <title>Sistema de Folha de Ponto | Com Viagem, Folga e Atestado</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -22,6 +22,7 @@
             --white: #ffffff;
             --travel: #9b59b6;
             --dayoff: #e67e22;
+            --sicknote: #e74c3c;
         }
         
         * {
@@ -249,6 +250,11 @@
             color: white;
         }
         
+        .btn-sicknote {
+            background: var(--sicknote);
+            color: white;
+        }
+        
         .employee-selector {
             display: flex;
             align-items: center;
@@ -323,6 +329,10 @@
         
         .day-off {
             background-color: #fef9e7;
+        }
+        
+        .sicknote-day {
+            background-color: #fdeaea;
         }
         
         .day-options {
@@ -569,6 +579,10 @@
         .legend-dayoff {
             background-color: #fef9e7;
         }
+        
+        .legend-sicknote {
+            background-color: #fdeaea;
+        }
     </style>
 </head>
 <body>
@@ -654,6 +668,10 @@
                         <div class="legend-color legend-dayoff"></div>
                         <span>Folga</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-sicknote"></div>
+                        <span>Atestado</span>
+                    </div>
                 </div>
                 
                 <table id="timeSheet">
@@ -697,6 +715,10 @@
                         <div class="summary-item">
                             <span>Dias de Folga:</span>
                             <span id="dayoffDays">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Dias com Atestado:</span>
+                            <span id="sicknoteDays">0</span>
                         </div>
                         <div class="summary-item">
                             <span>Média Diária:</span>
@@ -895,6 +917,10 @@
                             <input type="checkbox" id="dayoff-${day}" name="dayoff" data-day="${day}">
                             <label for="dayoff-${day}">Folga</label>
                         </div>
+                        <div class="day-option">
+                            <input type="checkbox" id="sicknote-${day}" name="sicknote" data-day="${day}">
+                            <label for="sicknote-${day}">Atestado</label>
+                        </div>
                     </td>
                     <td class="total-cell" id="total-${day}">00:00</td>
                     <td class="overtime-cell" id="overtime-${day}">00:00</td>
@@ -905,67 +931,103 @@
             
             document.getElementById('businessDays').textContent = businessDays;
             
-            // Adicionar event listeners para os campos de tempo
+            // Configurar listeners para os campos de tempo
+            setupInputListeners();
+        }
+        
+        // Configurar listeners para os campos de tempo - FUNÇÃO CORRIGIDA
+        function setupInputListeners() {
             const timeInputs = document.querySelectorAll('input[type="time"]');
             timeInputs.forEach(input => {
+                // Evento para mudanças normais
                 input.addEventListener('change', calculateHours);
+                // Evento para quando o campo é limpo
+                input.addEventListener('input', function(e) {
+                    if (!e.target.value) {
+                        const day = e.target.getAttribute('data-day');
+                        calculateDayHours(day);
+                    }
+                });
             });
             
             // Adicionar event listeners para as opções de dia
-            const optionInputs = document.querySelectorAll('input[name="travel"], input[name="dayoff"]');
+            const optionInputs = document.querySelectorAll('input[name="travel"], input[name="dayoff"], input[name="sicknote"]');
             optionInputs.forEach(input => {
                 input.addEventListener('change', handleDayOptionChange);
             });
         }
         
-        // Manipular mudanças nas opções de dia (viagem/folga)
+        // Manipular mudanças nas opções de dia (viagem/folga/atestado)
         function handleDayOptionChange(event) {
             const checkbox = event.target;
             const day = checkbox.getAttribute('data-day');
             const row = checkbox.closest('tr');
             const isTravel = checkbox.name === 'travel' && checkbox.checked;
             const isDayOff = checkbox.name === 'dayoff' && checkbox.checked;
+            const isSicknote = checkbox.name === 'sicknote' && checkbox.checked;
             
             // Remover outras classes primeiro
-            row.classList.remove('travel-day', 'day-off');
+            row.classList.remove('travel-day', 'day-off', 'sicknote-day');
             
             // Aplicar a classe apropriada
             if (isTravel) {
                 row.classList.add('travel-day');
-                // Desmarcar folga se viagem estiver marcada
+                // Desmarcar outras opções se viagem estiver marcada
                 row.querySelector('input[name="dayoff"]').checked = false;
+                row.querySelector('input[name="sicknote"]').checked = false;
+                // Calcular horas para viagem
+                calculateDayHours(day);
             } else if (isDayOff) {
                 row.classList.add('day-off');
-                // Desmarcar viagem se folga estiver marcada
+                // Desmarcar outras opções se folga estiver marcada
                 row.querySelector('input[name="travel"]').checked = false;
-                
-                // Preencher automaticamente com 8 horas de trabalho para folga
+                row.querySelector('input[name="sicknote"]').checked = false;
+                // Para folga, considerar 8 horas trabalhadas
                 row.querySelector('.total-cell').textContent = '08:00';
                 row.querySelector('.overtime-cell').textContent = '00:00';
+            } else if (isSicknote) {
+                row.classList.add('sicknote-day');
+                // Desmarcar outras opções se atestado estiver marcada
+                row.querySelector('input[name="travel"]').checked = false;
+                row.querySelector('input[name="dayoff"]').checked = false;
+                // Para atestado, considerar 0 horas trabalhadas
+                row.querySelector('.total-cell').textContent = '00:00';
+                row.querySelector('.overtime-cell').textContent = '00:00';
+            } else {
+                // Se nenhuma opção estiver marcada, recalcular baseado nos horários
+                calculateDayHours(day);
             }
-            
-            // Recalcular horas
-            calculateDayHours(day);
             
             // Recalcular totais do mês
             calculateMonthlyTotals();
         }
         
-        // Calcular horas do dia - FUNÇÃO CORRIGIDA
+        // Calcular horas do dia
         function calculateHours(event) {
             const field = event.target;
             const day = field.getAttribute('data-day');
             calculateDayHours(day);
         }
         
-        // Calcular horas para um dia específico
+        // Calcular horas para um dia específico - FUNÇÃO CORRIGIDA
         function calculateDayHours(day) {
             const row = document.querySelector(`tr input[name="entrada"][data-day="${day}"]`).closest('tr');
             const travelChecked = row.querySelector('input[name="travel"]').checked;
             const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
+            const sicknoteChecked = row.querySelector('input[name="sicknote"]').checked;
             
-            // Se for folga, já calculamos anteriormente
+            // Se for folga ou atestado, usar valores fixos
             if (dayoffChecked) {
+                row.querySelector('.total-cell').textContent = '08:00';
+                row.querySelector('.overtime-cell').textContent = '00:00';
+                calculateMonthlyTotals();
+                return;
+            }
+            
+            if (sicknoteChecked) {
+                row.querySelector('.total-cell').textContent = '00:00';
+                row.querySelector('.overtime-cell').textContent = '00:00';
+                calculateMonthlyTotals();
                 return;
             }
             
@@ -983,7 +1045,7 @@
                 return;
             }
             
-            // Calcular apenas se entrada e saída estiverem preenchidas (mínimo necessário)
+            // CALCULAR APENAS SE ENTRADA E SAÍDA ESTIVEREM PREENCHIDAS
             if (entrada && saida) {
                 // Converter para minutos
                 const entradaMin = timeToMinutes(entrada);
@@ -1029,14 +1091,14 @@
                 row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
                 row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
                 
-                // Recalcular totais do mês
-                calculateMonthlyTotals();
-            } else if ((entrada && !saida) || (!entrada && saida)) {
-                // Campos incompletos - limpar totais
+            } else {
+                // SE ALGUM CAMPO ESTIVER FALTANDO, ZERAR OS TOTAIS
                 row.querySelector('.total-cell').textContent = '00:00';
                 row.querySelector('.overtime-cell').textContent = '00:00';
-                calculateMonthlyTotals();
             }
+            
+            // Recalcular totais do mês
+            calculateMonthlyTotals();
         }
         
         // Resetar linha em caso de erro
@@ -1057,6 +1119,7 @@
             let daysWorked = 0;
             let travelDays = 0;
             let dayoffDays = 0;
+            let sicknoteDays = 0;
             
             // Encontrar todos os totais diários
             const rows = document.querySelectorAll('#timeSheet tbody tr');
@@ -1066,6 +1129,7 @@
                 const overtimeCell = row.querySelector('.overtime-cell');
                 const isTravel = row.querySelector('input[name="travel"]').checked;
                 const isDayOff = row.querySelector('input[name="dayoff"]').checked;
+                const isSicknote = row.querySelector('input[name="sicknote"]').checked;
                 
                 if (isTravel) {
                     travelDays++;
@@ -1074,8 +1138,10 @@
                 } else if (isDayOff) {
                     dayoffDays++;
                     totalMinutes += 480; // 8 horas em minutos
-                    // Subtrair 8 horas das horas extras
-                    totalOvertimeMinutes = Math.max(0, totalOvertimeMinutes - 480);
+                    daysWorked++;
+                } else if (isSicknote) {
+                    sicknoteDays++;
+                    // Para atestado, não adiciona horas trabalhadas
                     daysWorked++;
                 } else if (totalCell.textContent !== '00:00') {
                     totalMinutes += timeToMinutes(totalCell.textContent);
@@ -1093,6 +1159,7 @@
             document.getElementById('daysWorked').textContent = daysWorked;
             document.getElementById('travelDays').textContent = travelDays;
             document.getElementById('dayoffDays').textContent = dayoffDays;
+            document.getElementById('sicknoteDays').textContent = sicknoteDays;
             document.getElementById('dailyAverage').textContent = minutesToTime(dailyAverage);
             
             // Atualizar status
@@ -1141,6 +1208,7 @@
                 data['daysWorked'] = document.getElementById('daysWorked').textContent;
                 data['travelDays'] = document.getElementById('travelDays').textContent;
                 data['dayoffDays'] = document.getElementById('dayoffDays').textContent;
+                data['sicknoteDays'] = document.getElementById('sicknoteDays').textContent;
                 data['lastUpdate'] = new Date().toISOString();
                 
                 // Salvar no Firebase
@@ -1175,7 +1243,7 @@
                             for (const key in data) {
                                 if (key.startsWith('entrada_') || key.startsWith('intervalo-inicio_') || 
                                     key.startsWith('intervalo-fim_') || key.startsWith('saida_') ||
-                                    key.startsWith('travel_') || key.startsWith('dayoff_')) {
+                                    key.startsWith('travel_') || key.startsWith('dayoff_') || key.startsWith('sicknote_')) {
                                     const parts = key.split('_');
                                     const fieldName = parts[0];
                                     const day = parts[1];
@@ -1191,6 +1259,8 @@
                                                     row.classList.add('travel-day');
                                                 } else if (fieldName === 'dayoff') {
                                                     row.classList.add('day-off');
+                                                } else if (fieldName === 'sicknote') {
+                                                    row.classList.add('sicknote-day');
                                                 }
                                             }
                                         } else {
@@ -1224,52 +1294,9 @@
             const rows = document.querySelectorAll('#timeSheet tbody tr');
             
             rows.forEach(row => {
-                const travelChecked = row.querySelector('input[name="travel"]').checked;
-                const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
-                const entrada = row.querySelector('input[name="entrada"]').value;
-                const intervaloInicio = row.querySelector('input[name="intervalo-inicio"]').value;
-                const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
-                const saida = row.querySelector('input[name="saida"]').value;
-                
-                if (travelChecked && entrada && saida) {
-                    // Para viagem, considerar 8 horas fixas
-                    row.querySelector('.total-cell').textContent = '08:00';
-                    row.querySelector('.overtime-cell').textContent = '00:00';
-                } else if (dayoffChecked) {
-                    // Para folga, considerar 8 horas fixas
-                    row.querySelector('.total-cell').textContent = '08:00';
-                    row.querySelector('.overtime-cell').textContent = '00:00';
-                } else if (entrada && saida) {
-                    // Converter para minutos
-                    const entradaMin = timeToMinutes(entrada);
-                    const saidaMin = timeToMinutes(saida);
-                    
-                    let horasTrabalhadasMin = saidaMin - entradaMin;
-                    
-                    // Calcular intervalo se informado
-                    if (intervaloInicio && intervaloFim) {
-                        const intervaloInicioMin = timeToMinutes(intervaloInicio);
-                        const intervaloFimMin = timeToMinutes(intervaloFim);
-                        const intervaloMin = intervaloFimMin - intervaloInicioMin;
-                        horasTrabalhadasMin -= intervaloMin;
-                    }
-                    
-                    // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
-                    const horasExtrasMin = Math.max(0, horasTrabalhadasMin - 480);
-                    const horasNormaisMin = horasTrabalhadasMin - horasExtrasMin;
-                    
-                    // Atualizar totais do dia
-                    row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
-                    row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
-                } else {
-                    // Campos incompletos - limpar totais
-                    row.querySelector('.total-cell').textContent = '00:00';
-                    row.querySelector('.overtime-cell').textContent = '00:00';
-                }
+                const day = row.querySelector('input[name="entrada"]').getAttribute('data-day');
+                calculateDayHours(day);
             });
-            
-            // Recalcular totais mensais
-            calculateMonthlyTotals();
         }
         
         // Limpar dados
@@ -1281,7 +1308,7 @@
                         input.checked = false;
                         // Remover classes de estilo
                         const row = input.closest('tr');
-                        row.classList.remove('travel-day', 'day-off');
+                        row.classList.remove('travel-day', 'day-off', 'sicknote-day');
                     } else {
                         input.value = '';
                     }
@@ -1311,7 +1338,7 @@
                 // Cabeçalhos
                 data.push([
                     'DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 
-                    'FIM INTERVALO', 'SAÍDA', 'VIAGEM', 'FOLGA', 'TOTAL DIÁRIO', 'HORA EXTRA'
+                    'FIM INTERVALO', 'SAÍDA', 'VIAGEM', 'FOLGA', 'ATESTADO', 'TOTAL DIÁRIO', 'HORA EXTRA'
                 ]);
                 
                 // Dados das linhas
@@ -1326,6 +1353,7 @@
                         row.querySelector('input[name="saida"]').value,
                         row.querySelector('input[name="travel"]').checked ? 'Sim' : 'Não',
                         row.querySelector('input[name="dayoff"]').checked ? 'Sim' : 'Não',
+                        row.querySelector('input[name="sicknote"]').checked ? 'Sim' : 'Não',
                         cells[7].textContent,
                         cells[8].textContent
                     ];
@@ -1340,6 +1368,7 @@
                 data.push(['Dias Trabalhados:', document.getElementById('daysWorked').textContent]);
                 data.push(['Dias de Viagem:', document.getElementById('travelDays').textContent]);
                 data.push(['Dias de Folga:', document.getElementById('dayoffDays').textContent]);
+                data.push(['Dias com Atestado:', document.getElementById('sicknoteDays').textContent]);
                 data.push(['Média Diária:', document.getElementById('dailyAverage').textContent]);
                 
                 // Adicionar assinaturas se solicitado
