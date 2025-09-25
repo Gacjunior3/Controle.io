@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Folha de Ponto | Com Viagem, Folga e Atestado</title>
+    <title>Sistema de Folha de Ponto | Com Saldo de Horas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -23,6 +23,8 @@
             --travel: #9b59b6;
             --dayoff: #e67e22;
             --sicknote: #e74c3c;
+            --negative: #e74c3c;
+            --positive: #2ecc71;
         }
         
         * {
@@ -240,21 +242,6 @@
             background: #165B34;
         }
         
-        .btn-travel {
-            background: var(--travel);
-            color: white;
-        }
-        
-        .btn-dayoff {
-            background: var(--dayoff);
-            color: white;
-        }
-        
-        .btn-sicknote {
-            background: var(--sicknote);
-            color: white;
-        }
-        
         .employee-selector {
             display: flex;
             align-items: center;
@@ -316,7 +303,16 @@
         
         .overtime-cell {
             font-weight: bold;
-            background-color: #fff5e6;
+        }
+        
+        .overtime-positive {
+            background-color: #e8f5e8;
+            color: var(--positive);
+        }
+        
+        .overtime-negative {
+            background-color: #fdeaea;
+            color: var(--negative);
         }
         
         .weekend {
@@ -583,6 +579,14 @@
         .legend-sicknote {
             background-color: #fdeaea;
         }
+        
+        .legend-positive {
+            background-color: #e8f5e8;
+        }
+        
+        .legend-negative {
+            background-color: #fdeaea;
+        }
     </style>
 </head>
 <body>
@@ -672,6 +676,14 @@
                         <div class="legend-color legend-sicknote"></div>
                         <span>Atestado</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-positive"></div>
+                        <span>Horas Positivas</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-negative"></div>
+                        <span>Horas Negativas</span>
+                    </div>
                 </div>
                 
                 <table id="timeSheet">
@@ -685,7 +697,7 @@
                             <th>SAÍDA</th>
                             <th>OPÇÕES</th>
                             <th>TOTAL DIÁRIO</th>
-                            <th>HORA EXTRA</th>
+                            <th>SALDO DE HORAS</th>
                         </tr>
                     </thead>
                     <tbody id="timeSheetBody">
@@ -701,16 +713,20 @@
                             <span id="totalHours">00:00</span>
                         </div>
                         <div class="summary-item">
-                            <span>Total de Horas Extras:</span>
-                            <span id="totalOvertime">00:00</span>
+                            <span>Saldo de Horas (Extras):</span>
+                            <span id="totalOvertimePositive">00:00</span>
                         </div>
                         <div class="summary-item">
-                            <span>Dias Trabalhados:</span>
+                            <span>Saldo de Horas (Devendo):</span>
+                            <span id="totalOvertimeNegative">00:00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Saldo Final:</span>
+                            <span id="totalOvertimeFinal">00:00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Dias com Marcação:</span>
                             <span id="daysWorked">0</span>
-                        </div>
-                        <div class="summary-item">
-                            <span>Dias de Viagem:</span>
-                            <span id="travelDays">0</span>
                         </div>
                         <div class="summary-item">
                             <span>Dias de Folga:</span>
@@ -719,10 +735,6 @@
                         <div class="summary-item">
                             <span>Dias com Atestado:</span>
                             <span id="sicknoteDays">0</span>
-                        </div>
-                        <div class="summary-item">
-                            <span>Média Diária:</span>
-                            <span id="dailyAverage">00:00</span>
                         </div>
                     </div>
                     
@@ -733,43 +745,16 @@
                             <span>Seg-Qui: 9h, Sex: 8h</span>
                         </div>
                         <div class="summary-item">
-                            <span>Intervalo Mínimo:</span>
-                            <span>1 hora</span>
+                            <span>Folgas descontam:</span>
+                            <span>Seg-Qui: 9h, Sex: 8h</span>
                         </div>
                         <div class="summary-item">
-                            <span>Dias Úteis:</span>
-                            <span id="businessDays">22</span>
+                            <span>Sáb/Dom:</span>
+                            <span>Zerados se não tiver marcação</span>
                         </div>
                         <div class="summary-item">
                             <span>Status:</span>
                             <span id="status">Em andamento</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="export-options">
-                    <h3><i class="fas fa-cog"></i> Opções de Exportação</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <div class="option-group">
-                            <label for="exportFormat">Formato de Exportação:</label>
-                            <select id="exportFormat">
-                                <option value="xlsx">Excel (.xlsx)</option>
-                                <option value="csv">CSV (.csv)</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label for="exportRange">Período de Exportação:</label>
-                            <select id="exportRange">
-                                <option value="current">Mês Atual</option>
-                                <option value="all">Todos os Dados</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label for="includeSignatures">Incluir Assinaturas:</label>
-                            <select id="includeSignatures">
-                                <option value="yes">Sim</option>
-                                <option value="no">Não</option>
-                            </select>
                         </div>
                     </div>
                 </div>
@@ -790,7 +775,7 @@
             </div>
             
             <footer>
-                <p>Sistema de Controle de Ponto Eletrônico | Desenvolvido para Gestão de Recursos Humanos</p>
+                <p>Sistema de Controle de Ponto Eletrônico | Soma apenas marcações</p>
                 <p>© 2025 - Todos os direitos reservados</p>
             </footer>
         </div>
@@ -830,15 +815,11 @@
         // Verificar estado de autenticação
         auth.onAuthStateChanged((user) => {
             if (user) {
-                // Usuário autenticado
                 document.getElementById('loginModal').style.display = 'none';
                 document.getElementById('appContent').classList.remove('hidden');
                 document.getElementById('userEmail').textContent = user.email;
-                
-                // Inicializar a aplicação
                 initializeApp();
             } else {
-                // Usuário não autenticado
                 document.getElementById('loginModal').style.display = 'flex';
                 document.getElementById('appContent').classList.add('hidden');
             }
@@ -847,61 +828,42 @@
         // Manipular formulário de login
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const loginError = document.getElementById('loginError');
             
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Login bem-sucedido
                     loginError.style.display = 'none';
                 })
                 .catch((error) => {
-                    console.error('Erro de autenticação:', error);
                     loginError.style.display = 'block';
                 });
         });
         
-        // Função de logout
         function logout() {
-            auth.signOut()
-                .then(() => {
-                    showNotification('Logout realizado com sucesso!', 'success');
-                })
-                .catch((error) => {
-                    console.error('Erro ao fazer logout:', error);
-                    showNotification('Erro ao fazer logout: ' + error.message, 'error');
-                });
+            auth.signOut().then(() => {
+                showNotification('Logout realizado com sucesso!', 'success');
+            });
         }
         
-        // Inicializar a aplicação
         function initializeApp() {
-            // Gerar a tabela
             generateTimeSheet();
-            
-            // Carregar dados do Firebase
             loadData();
-            
-            // Configurar event listeners
             document.getElementById('employee').addEventListener('change', function() {
                 currentEmployee = this.value;
                 loadData();
             });
         }
         
-        // Gerar a folha de ponto
         function generateTimeSheet() {
             const tbody = document.getElementById('timeSheetBody');
             tbody.innerHTML = '';
-            let businessDays = 0;
             
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
                 const dayOfWeek = date.getDay();
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                
-                if (!isWeekend) businessDays++;
                 
                 const tr = document.createElement('tr');
                 if (isWeekend) tr.classList.add('weekend');
@@ -934,13 +896,9 @@
                 tbody.appendChild(tr);
             }
             
-            document.getElementById('businessDays').textContent = businessDays;
-            
-            // Configurar listeners para os campos de tempo
             setupInputListeners();
         }
         
-        // Configurar listeners para os campos de tempo
         function setupInputListeners() {
             const timeInputs = document.querySelectorAll('input[type="time"]');
             timeInputs.forEach(input => {
@@ -950,7 +908,6 @@
                 });
             });
             
-            // Adicionar event listeners para as opções de dia
             const optionInputs = document.querySelectorAll('input[name="travel"], input[name="dayoff"], input[name="sicknote"]');
             optionInputs.forEach(input => {
                 input.addEventListener('change', function(e) {
@@ -960,17 +917,14 @@
             });
         }
         
-        // Manipular mudanças nas opções de dia
         function handleDayOptionChange(day) {
             const row = document.querySelector(`tr input[name="entrada"][data-day="${day}"]`).closest('tr');
             const travelChecked = row.querySelector('input[name="travel"]').checked;
             const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
             const sicknoteChecked = row.querySelector('input[name="sicknote"]').checked;
             
-            // Remover outras classes primeiro
             row.classList.remove('travel-day', 'day-off', 'sicknote-day');
             
-            // Aplicar a classe apropriada e desmarcar outras opções
             if (travelChecked) {
                 row.classList.add('travel-day');
                 row.querySelector('input[name="dayoff"]').checked = false;
@@ -988,55 +942,80 @@
             calculateDayHours(day);
         }
         
-        // Calcular horas para um dia específico - FUNÇÃO CORRIGIDA
+        // FUNÇÃO PRINCIPAL CORRIGIDA - SÓ CALCULA SE TIVER MARCAÇÃO
         function calculateDayHours(day) {
             const row = document.querySelector(`tr input[name="entrada"][data-day="${day}"]`).closest('tr');
             const travelChecked = row.querySelector('input[name="travel"]').checked;
             const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
             const sicknoteChecked = row.querySelector('input[name="sicknote"]').checked;
             
-            // Obter o dia da semana
             const date = new Date(year, month, parseInt(day));
             const dayOfWeek = date.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             
-            // Definir jornada padrão: Seg-Qui: 9h, Sex: 8h
-            let jornadaPadraoMinutos = 480; // 8 horas padrão
+            // Definir jornada padrão apenas para dias úteis
+            let jornadaPadraoMinutos = 0;
             if (dayOfWeek >= 1 && dayOfWeek <= 4) { // Segunda a Quinta
                 jornadaPadraoMinutos = 540; // 9 horas
+            } else if (dayOfWeek === 5) { // Sexta
+                jornadaPadraoMinutos = 480; // 8 horas
             }
+            // Sábado e Domingo: jornada 0 (não desconta automaticamente)
             
-            // Se for folga, considerar horas da jornada padrão
+            const overtimeCell = row.querySelector('.overtime-cell');
+            const totalCell = row.querySelector('.total-cell');
+            
+            // FOLGA: desconta a jornada completa do saldo (apenas dias úteis)
             if (dayoffChecked) {
-                row.querySelector('.total-cell').textContent = minutesToTime(jornadaPadraoMinutos);
-                row.querySelector('.overtime-cell').textContent = '00:00';
+                if (jornadaPadraoMinutos > 0) { // Só desconta se for dia útil
+                    totalCell.textContent = '00:00';
+                    overtimeCell.textContent = minutesToTime(-jornadaPadraoMinutos);
+                    overtimeCell.className = 'overtime-cell overtime-negative';
+                } else {
+                    // Finais de semana com folga: mantém zerado
+                    totalCell.textContent = '00:00';
+                    overtimeCell.textContent = '00:00';
+                    overtimeCell.className = 'overtime-cell';
+                }
                 calculateMonthlyTotals();
                 return;
             }
             
-            // Se for atestado, considerar 0 horas trabalhadas
+            // ATESTADO: não trabalhou, não desconta nem soma
             if (sicknoteChecked) {
-                row.querySelector('.total-cell').textContent = '00:00';
-                row.querySelector('.overtime-cell').textContent = '00:00';
+                totalCell.textContent = '00:00';
+                overtimeCell.textContent = '00:00';
+                overtimeCell.className = 'overtime-cell';
                 calculateMonthlyTotals();
                 return;
             }
             
-            // Obter todos os valores de tempo para este dia
+            // VIAGEM: considera jornada completa como trabalhada (apenas dias úteis)
+            if (travelChecked) {
+                if (jornadaPadraoMinutos > 0) {
+                    totalCell.textContent = minutesToTime(jornadaPadraoMinutos);
+                    overtimeCell.textContent = '00:00';
+                    overtimeCell.className = 'overtime-cell';
+                } else {
+                    // Viagem em final de semana: mantém zerado
+                    totalCell.textContent = '00:00';
+                    overtimeCell.textContent = '00:00';
+                    overtimeCell.className = 'overtime-cell';
+                }
+                calculateMonthlyTotals();
+                return;
+            }
+            
+            // DIA NORMAL: calcula baseado nos horários
             const entrada = row.querySelector('input[name="entrada"]').value;
             const intervaloInicio = row.querySelector('input[name="intervalo-inicio"]').value;
             const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
             const saida = row.querySelector('input[name="saida"]').value;
             
-            // Se for viagem, considerar horas da jornada padrão
-            if (travelChecked && entrada && saida) {
-                row.querySelector('.total-cell').textContent = minutesToTime(jornadaPadraoMinutos);
-                row.querySelector('.overtime-cell').textContent = '00:00';
-                calculateMonthlyTotals();
-                return;
-            }
+            // VERIFICAR SE TEM MARCAÇÃO (pelo menos entrada e saída)
+            const temMarcacao = entrada && saida;
             
-            // CALCULAR APENAS SE ENTRADA E SAÍDA ESTIVEREM PREENCHIDAS
-            if (entrada && saida) {
+            if (temMarcacao) {
                 const entradaMin = timeToMinutes(entrada);
                 const saidaMin = timeToMinutes(saida);
                 
@@ -1052,7 +1031,6 @@
                     horasTrabalhadasMin = saidaMin - entradaMin;
                 } else if (!intervaloInicio || !intervaloFim) {
                     horasTrabalhadasMin = saidaMin - entradaMin;
-                    showNotification('Intervalo incompleto - considerando sem intervalo', 'error');
                 } else {
                     const intervaloInicioMin = timeToMinutes(intervaloInicio);
                     const intervaloFimMin = timeToMinutes(intervaloFim);
@@ -1066,38 +1044,52 @@
                     horasTrabalhadasMin = (intervaloInicioMin - entradaMin) + (saidaMin - intervaloFimMin);
                 }
                 
-                // Calcular horas extras considerando jornada específica do dia
-                const horasExtrasMin = Math.max(0, horasTrabalhadasMin - jornadaPadraoMinutos);
-                const horasNormaisMin = horasTrabalhadasMin - horasExtrasMin;
+                // CALCULAR SALDO (apenas para dias úteis com jornada definida)
+                let saldoMinutos = 0;
+                if (jornadaPadraoMinutos > 0) {
+                    saldoMinutos = horasTrabalhadasMin - jornadaPadraoMinutos;
+                } else {
+                    // Finais de semana: saldo é igual às horas trabalhadas
+                    saldoMinutos = horasTrabalhadasMin;
+                }
                 
-                row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
-                row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
+                totalCell.textContent = minutesToTime(horasTrabalhadasMin);
+                
+                if (saldoMinutos > 0) {
+                    overtimeCell.textContent = '+' + minutesToTime(saldoMinutos);
+                    overtimeCell.className = 'overtime-cell overtime-positive';
+                } else if (saldoMinutos < 0) {
+                    overtimeCell.textContent = minutesToTime(saldoMinutos);
+                    overtimeCell.className = 'overtime-cell overtime-negative';
+                } else {
+                    overtimeCell.textContent = '00:00';
+                    overtimeCell.className = 'overtime-cell';
+                }
                 
             } else {
-                row.querySelector('.total-cell').textContent = '00:00';
-                row.querySelector('.overtime-cell').textContent = '00:00';
+                // SEM MARCAÇÃO: mantém tudo zerado
+                totalCell.textContent = '00:00';
+                overtimeCell.textContent = '00:00';
+                overtimeCell.className = 'overtime-cell';
             }
             
             calculateMonthlyTotals();
         }
         
-        // Resetar linha em caso de erro
         function resetRow(row) {
             const inputs = row.querySelectorAll('input[type="time"]');
-            inputs.forEach(input => {
-                input.value = '';
-            });
-            
+            inputs.forEach(input => input.value = '');
             row.querySelector('.total-cell').textContent = '00:00';
             row.querySelector('.overtime-cell').textContent = '00:00';
+            row.querySelector('.overtime-cell').className = 'overtime-cell';
         }
         
-        // Calcular totais mensais
+        // CALCULAR TOTAIS MENSAIS - SÓ CONTA DIAS COM MARCAÇÃO
         function calculateMonthlyTotals() {
             let totalMinutes = 0;
-            let totalOvertimeMinutes = 0;
-            let daysWorked = 0;
-            let travelDays = 0;
+            let totalOvertimePositive = 0;
+            let totalOvertimeNegative = 0;
+            let daysWithMarking = 0;
             let dayoffDays = 0;
             let sicknoteDays = 0;
             
@@ -1106,73 +1098,83 @@
             rows.forEach(row => {
                 const totalCell = row.querySelector('.total-cell');
                 const overtimeCell = row.querySelector('.overtime-cell');
-                const isTravel = row.querySelector('input[name="travel"]').checked;
                 const isDayOff = row.querySelector('input[name="dayoff"]').checked;
                 const isSicknote = row.querySelector('input[name="sicknote"]').checked;
                 
-                if (isTravel) {
-                    travelDays++;
-                    const day = row.querySelector('input[name="entrada"]').getAttribute('data-day');
-                    const date = new Date(year, month, parseInt(day));
-                    const dayOfWeek = date.getDay();
-                    let jornadaMinutos = 480;
-                    if (dayOfWeek >= 1 && dayOfWeek <= 4) jornadaMinutos = 540;
-                    totalMinutes += jornadaMinutos;
-                    daysWorked++;
-                } else if (isDayOff) {
+                if (isDayOff) {
                     dayoffDays++;
-                    const day = row.querySelector('input[name="entrada"]').getAttribute('data-day');
-                    const date = new Date(year, month, parseInt(day));
-                    const dayOfWeek = date.getDay();
-                    let jornadaMinutos = 480;
-                    if (dayOfWeek >= 1 && dayOfWeek <= 4) jornadaMinutos = 540;
-                    totalMinutes += jornadaMinutos;
-                    daysWorked++;
+                    // Só conta folga se tiver saldo negativo (dias úteis)
+                    const overtimeText = overtimeCell.textContent;
+                    if (overtimeText !== '00:00' && !overtimeText.startsWith('+')) {
+                        totalOvertimeNegative += Math.abs(timeToMinutes(overtimeText));
+                    }
                 } else if (isSicknote) {
                     sicknoteDays++;
                 } else if (totalCell.textContent !== '00:00') {
+                    // Só conta se tiver marcação (horas trabalhadas > 0)
                     totalMinutes += timeToMinutes(totalCell.textContent);
-                    totalOvertimeMinutes += timeToMinutes(overtimeCell.textContent);
-                    daysWorked++;
+                    daysWithMarking++;
+                    
+                    // Calcular saldo positivo e negativo
+                    const overtimeText = overtimeCell.textContent;
+                    if (overtimeText.startsWith('+')) {
+                        totalOvertimePositive += timeToMinutes(overtimeText.substring(1));
+                    } else if (overtimeText !== '00:00' && !overtimeText.startsWith('+')) {
+                        totalOvertimeNegative += Math.abs(timeToMinutes(overtimeText));
+                    }
                 }
             });
             
-            const dailyAverage = daysWorked > 0 ? Math.round(totalMinutes / daysWorked) : 0;
+            const saldoFinal = totalOvertimePositive - totalOvertimeNegative;
             
+            // Atualizar totais mensais
             document.getElementById('totalHours').textContent = minutesToTime(totalMinutes);
-            document.getElementById('totalOvertime').textContent = minutesToTime(totalOvertimeMinutes);
-            document.getElementById('daysWorked').textContent = daysWorked;
-            document.getElementById('travelDays').textContent = travelDays;
+            document.getElementById('totalOvertimePositive').textContent = minutesToTime(totalOvertimePositive);
+            document.getElementById('totalOvertimeNegative').textContent = minutesToTime(totalOvertimeNegative);
+            
+            const saldoFinalElement = document.getElementById('totalOvertimeFinal');
+            if (saldoFinal > 0) {
+                saldoFinalElement.textContent = '+' + minutesToTime(saldoFinal);
+                saldoFinalElement.style.color = 'var(--positive)';
+            } else if (saldoFinal < 0) {
+                saldoFinalElement.textContent = minutesToTime(saldoFinal);
+                saldoFinalElement.style.color = 'var(--negative)';
+            } else {
+                saldoFinalElement.textContent = '00:00';
+                saldoFinalElement.style.color = 'inherit';
+            }
+            
+            document.getElementById('daysWorked').textContent = daysWithMarking;
             document.getElementById('dayoffDays').textContent = dayoffDays;
             document.getElementById('sicknoteDays').textContent = sicknoteDays;
-            document.getElementById('dailyAverage').textContent = minutesToTime(dailyAverage);
             
             const statusElement = document.getElementById('status');
-            if (daysWorked === 0) {
-                statusElement.textContent = "Não iniciado";
-            } else if (daysWorked < document.getElementById('businessDays').textContent) {
-                statusElement.textContent = "Em andamento";
-            } else {
-                statusElement.textContent = "Concluído";
-            }
+            statusElement.textContent = daysWithMarking === 0 ? "Não iniciado" : "Em andamento";
         }
         
-        // Converter tempo para minutos
         function timeToMinutes(timeStr) {
             if (!timeStr || timeStr === '00:00') return 0;
+            if (timeStr.startsWith('-')) {
+                const [_, hours, minutes] = timeStr.match(/-(\d+):(\d+)/);
+                return -(parseInt(hours) * 60 + parseInt(minutes));
+            }
+            if (timeStr.startsWith('+')) {
+                const [_, hours, minutes] = timeStr.match(/\+(\d+):(\d+)/);
+                return parseInt(hours) * 60 + parseInt(minutes);
+            }
             const [hours, minutes] = timeStr.split(':').map(Number);
             return hours * 60 + minutes;
         }
         
-        // Converter minutos para formato de tempo
         function minutesToTime(minutes) {
-            if (isNaN(minutes) || minutes <= 0) return '00:00';
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+            if (isNaN(minutes)) return '00:00';
+            const absMinutes = Math.abs(minutes);
+            const hours = Math.floor(absMinutes / 60);
+            const mins = absMinutes % 60;
+            const sign = minutes < 0 ? '-' : '';
+            return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
         }
         
-        // Salvar dados no Firebase
         function saveData() {
             try {
                 const employee = document.getElementById('employee').value;
@@ -1186,110 +1188,74 @@
                     data[`${fieldName}_${day}`] = value;
                 });
                 
-                data['totalHours'] = document.getElementById('totalHours').textContent;
-                data['totalOvertime'] = document.getElementById('totalOvertime').textContent;
-                data['daysWorked'] = document.getElementById('daysWorked').textContent;
-                data['travelDays'] = document.getElementById('travelDays').textContent;
-                data['dayoffDays'] = document.getElementById('dayoffDays').textContent;
-                data['sicknoteDays'] = document.getElementById('sicknoteDays').textContent;
-                data['lastUpdate'] = new Date().toISOString();
-                
                 const ref = database.ref(`folha_ponto/${employee}/SETEMBRO_2025`);
-                ref.set(data)
-                    .then(() => {
-                        showNotification('Dados salvos com sucesso!', 'success');
-                    })
-                    .catch((error) => {
-                        showNotification('Erro ao salvar: ' + error.message, 'error');
-                    });
-                    
+                ref.set(data).then(() => {
+                    showNotification('Dados salvos com sucesso!', 'success');
+                });
             } catch (error) {
-                showNotification('Erro no salvamento: ' + error.message, 'error');
+                showNotification('Erro ao salvar: ' + error.message, 'error');
             }
         }
         
-        // Carregar dados do Firebase
         function loadData() {
             try {
                 const employee = document.getElementById('employee').value;
                 const ref = database.ref(`folha_ponto/${employee}/SETEMBRO_2025`);
                 
-                ref.once('value')
-                    .then((snapshot) => {
-                        if (snapshot.exists()) {
-                            const data = snapshot.val();
-                            
-                            for (const key in data) {
-                                if (key.startsWith('entrada_') || key.startsWith('intervalo-inicio_') || 
-                                    key.startsWith('intervalo-fim_') || key.startsWith('saida_') ||
-                                    key.startsWith('travel_') || key.startsWith('dayoff_') || key.startsWith('sicknote_')) {
-                                    const parts = key.split('_');
-                                    const fieldName = parts[0];
-                                    const day = parts[1];
-                                    
-                                    const input = document.querySelector(`input[name="${fieldName}"][data-day="${day}"]`);
-                                    if (input) {
-                                        if (input.type === 'checkbox') {
-                                            input.checked = data[key];
-                                            if (data[key]) {
-                                                handleDayOptionChange(day);
-                                            }
-                                        } else {
-                                            input.value = data[key];
-                                        }
+                ref.once('value').then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        for (const key in data) {
+                            if (key.startsWith('entrada_') || key.startsWith('intervalo-inicio_') || 
+                                key.startsWith('intervalo-fim_') || key.startsWith('saida_') ||
+                                key.startsWith('travel_') || key.startsWith('dayoff_') || key.startsWith('sicknote_')) {
+                                const parts = key.split('_');
+                                const fieldName = parts[0];
+                                const day = parts[1];
+                                
+                                const input = document.querySelector(`input[name="${fieldName}"][data-day="${day}"]`);
+                                if (input) {
+                                    if (input.type === 'checkbox') {
+                                        input.checked = data[key];
+                                        if (data[key]) handleDayOptionChange(day);
+                                    } else {
+                                        input.value = data[key];
                                     }
                                 }
                             }
-                            
-                            // Recalcular todos os dias
-                            for (let day = 1; day <= daysInMonth; day++) {
-                                calculateDayHours(day);
-                            }
-                            
-                            showNotification('Dados carregados!', 'success');
                         }
-                    })
-                    .catch((error) => {
-                        console.log('Nenhum dado salvo encontrado');
-                    });
-                    
+                        for (let day = 1; day <= daysInMonth; day++) calculateDayHours(day);
+                    }
+                });
             } catch (error) {
                 console.log('Erro no carregamento');
             }
         }
         
-        // Limpar dados
         function clearData() {
-            if (confirm('Tem certeza que deseja limpar todos os dados?')) {
+            if (confirm('Limpar todos os dados?')) {
                 const inputs = document.querySelectorAll('input[type="time"], input[type="checkbox"]');
                 inputs.forEach(input => {
                     if (input.type === 'checkbox') {
                         input.checked = false;
-                        const row = input.closest('tr');
-                        row.classList.remove('travel-day', 'day-off', 'sicknote-day');
+                        input.closest('tr').classList.remove('travel-day', 'day-off', 'sicknote-day');
                     } else {
                         input.value = '';
                     }
                 });
-                
-                const totals = document.querySelectorAll('.total-cell, .overtime-cell');
-                totals.forEach(element => {
-                    element.textContent = '00:00';
+                document.querySelectorAll('.total-cell, .overtime-cell').forEach(el => {
+                    el.textContent = '00:00';
+                    el.className = el.className.includes('overtime') ? 'overtime-cell' : 'total-cell';
                 });
-                
                 calculateMonthlyTotals();
-                showNotification('Dados limpos!', 'success');
             }
         }
         
-        // Exportar para Excel
         function exportToExcel() {
             try {
                 const employee = document.getElementById('employee').value;
-                const exportFormat = document.getElementById('exportFormat').value;
-                
                 let data = [];
-                data.push(['DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 'FIM INTERVALO', 'SAÍDA', 'VIAGEM', 'FOLGA', 'ATESTADO', 'TOTAL DIÁRIO', 'HORA EXTRA']);
+                data.push(['DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 'FIM INTERVALO', 'SAÍDA', 'FOLGA', 'TOTAL DIÁRIO', 'SALDO DE HORAS']);
                 
                 const rows = document.querySelectorAll('#timeSheet tbody tr');
                 rows.forEach(row => {
@@ -1301,50 +1267,40 @@
                         row.querySelector('input[name="intervalo-inicio"]').value,
                         row.querySelector('input[name="intervalo-fim"]').value,
                         row.querySelector('input[name="saida"]').value,
-                        row.querySelector('input[name="travel"]').checked ? 'Sim' : 'Não',
                         row.querySelector('input[name="dayoff"]').checked ? 'Sim' : 'Não',
-                        row.querySelector('input[name="sicknote"]').checked ? 'Sim' : 'Não',
                         cells[7].textContent,
                         cells[8].textContent
                     ];
                     data.push(rowData);
                 });
                 
-                data.push([]);
-                data.push(['RESUMO MENSAL', '']);
-                data.push(['Total de Horas Trabalhadas:', document.getElementById('totalHours').textContent]);
-                data.push(['Total de Horas Extras:', document.getElementById('totalOvertime').textContent]);
-                data.push(['Dias Trabalhados:', document.getElementById('daysWorked').textContent]);
+                data.push([], ['RESUMO MENSAL', ''],
+                    ['Total Horas Trabalhadas:', document.getElementById('totalHours').textContent],
+                    ['Saldo Horas Positivas:', document.getElementById('totalOvertimePositive').textContent],
+                    ['Saldo Horas Negativas:', document.getElementById('totalOvertimeNegative').textContent],
+                    ['Saldo Final:', document.getElementById('totalOvertimeFinal').textContent],
+                    ['Dias com Marcação:', document.getElementById('daysWorked').textContent]
+                );
                 
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Folha de Ponto");
-                
-                const fileName = `Folha_Ponto_${employee}_Setembro_2025.${exportFormat}`;
-                XLSX.writeFile(wb, fileName);
-                
+                XLSX.writeFile(wb, `Folha_Ponto_${employee}_Setembro_2025.xlsx`);
                 showNotification('Exportação realizada!', 'success');
-                
             } catch (error) {
-                showNotification('Erro na exportação: ' + error.message, 'error');
+                showNotification('Erro na exportação', 'error');
             }
         }
         
-        // Mostrar notificação
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.className = 'notification ' + type;
-            
-            setTimeout(() => {
-                notification.className = 'notification';
-            }, 3000);
+            setTimeout(() => notification.className = 'notification', 3000);
         }
         
-        // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
-            // Já vai mostrar o modal de login automaticamente
-            console.log('Sistema de Folha de Ponto carregado');
+            console.log('Sistema de Folha de Ponto - Soma apenas marcações');
         });
     </script>
 </body>
