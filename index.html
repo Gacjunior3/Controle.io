@@ -596,11 +596,11 @@
             <form class="login-form" id="loginForm">
                 <div class="form-group">
                     <label for="email">E-mail:</label>
-                    <input type="email" id="email" required placeholder="seu@email.com">
+                    <input type="email" id="email" required placeholder="seu@email.com" value="teste@teste.com">
                 </div>
                 <div class="form-group">
                     <label for="password">Senha:</label>
-                    <input type="password" id="password" required placeholder="Sua senha">
+                    <input type="password" id="password" required placeholder="Sua senha" value="123456">
                 </div>
                 <button type="submit" class="login-btn">Entrar no Sistema</button>
                 <div id="loginError" class="login-error">
@@ -688,7 +688,7 @@
                             <th>HORA EXTRA</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="timeSheetBody">
                         <!-- JavaScript will generate the rows here -->
                     </tbody>
                 </table>
@@ -730,7 +730,7 @@
                         <h3><i class="fas fa-info-circle"></i> INFORMAÇÕES</h3>
                         <div class="summary-item">
                             <span>Jornada Padrão:</span>
-                            <span>8 horas/dia</span>
+                            <span>Seg-Qui: 9h, Sex: 8h</span>
                         </div>
                         <div class="summary-item">
                             <span>Intervalo Mínimo:</span>
@@ -811,7 +811,12 @@
         };
         
         // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
+        try {
+            firebase.initializeApp(firebaseConfig);
+        } catch (error) {
+            console.log('Firebase já inicializado');
+        }
+        
         const database = firebase.database();
         const auth = firebase.auth();
         
@@ -849,7 +854,7 @@
             
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Login bem-sucedido - o listener onAuthStateChanged irá tratar
+                    // Login bem-sucedido
                     loginError.style.display = 'none';
                 })
                 .catch((error) => {
@@ -887,7 +892,7 @@
         
         // Gerar a folha de ponto
         function generateTimeSheet() {
-            const tbody = document.querySelector('#timeSheet tbody');
+            const tbody = document.getElementById('timeSheetBody');
             tbody.innerHTML = '';
             let businessDays = 0;
             
@@ -939,71 +944,47 @@
         function setupInputListeners() {
             const timeInputs = document.querySelectorAll('input[type="time"]');
             timeInputs.forEach(input => {
-                // Evento para mudanças normais
-                input.addEventListener('change', calculateHours);
-                // Evento para quando o campo é limpo
-                input.addEventListener('input', function(e) {
-                    if (!e.target.value) {
-                        const day = e.target.getAttribute('data-day');
-                        calculateDayHours(day);
-                    }
+                input.addEventListener('change', function(e) {
+                    const day = e.target.getAttribute('data-day');
+                    calculateDayHours(day);
                 });
             });
             
             // Adicionar event listeners para as opções de dia
             const optionInputs = document.querySelectorAll('input[name="travel"], input[name="dayoff"], input[name="sicknote"]');
             optionInputs.forEach(input => {
-                input.addEventListener('change', handleDayOptionChange);
+                input.addEventListener('change', function(e) {
+                    const day = e.target.getAttribute('data-day');
+                    handleDayOptionChange(day);
+                });
             });
         }
         
-        // Manipular mudanças nas opções de dia (viagem/folga/atestado)
-        function handleDayOptionChange(event) {
-            const checkbox = event.target;
-            const day = checkbox.getAttribute('data-day');
-            const row = checkbox.closest('tr');
-            const isTravel = checkbox.name === 'travel' && checkbox.checked;
-            const isDayOff = checkbox.name === 'dayoff' && checkbox.checked;
-            const isSicknote = checkbox.name === 'sicknote' && checkbox.checked;
+        // Manipular mudanças nas opções de dia
+        function handleDayOptionChange(day) {
+            const row = document.querySelector(`tr input[name="entrada"][data-day="${day}"]`).closest('tr');
+            const travelChecked = row.querySelector('input[name="travel"]').checked;
+            const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
+            const sicknoteChecked = row.querySelector('input[name="sicknote"]').checked;
             
             // Remover outras classes primeiro
             row.classList.remove('travel-day', 'day-off', 'sicknote-day');
             
-            // Aplicar a classe apropriada
-            if (isTravel) {
+            // Aplicar a classe apropriada e desmarcar outras opções
+            if (travelChecked) {
                 row.classList.add('travel-day');
-                // Desmarcar outras opções se viagem estiver marcada
                 row.querySelector('input[name="dayoff"]').checked = false;
                 row.querySelector('input[name="sicknote"]').checked = false;
-                // Calcular horas para viagem
-                calculateDayHours(day);
-            } else if (isDayOff) {
+            } else if (dayoffChecked) {
                 row.classList.add('day-off');
-                // Desmarcar outras opções se folga estiver marcada
                 row.querySelector('input[name="travel"]').checked = false;
                 row.querySelector('input[name="sicknote"]').checked = false;
-                // Para folga, considerar 8 horas trabalhadas
-                calculateDayHours(day);
-            } else if (isSicknote) {
+            } else if (sicknoteChecked) {
                 row.classList.add('sicknote-day');
-                // Desmarcar outras opções se atestado estiver marcada
                 row.querySelector('input[name="travel"]').checked = false;
                 row.querySelector('input[name="dayoff"]').checked = false;
-                // Para atestado, considerar 0 horas trabalhadas
-                calculateDayHours(day);
-            } else {
-                // Se nenhuma opção estiver marcada, recalcular baseado nos horários
-                calculateDayHours(day);
             }
             
-            // Recalcular totais do mês
-            calculateMonthlyTotals();
-        }
-        
-        // Calcular horas do dia
-        function calculateHours(event) {
-            const field = event.target;
-            const day = field.getAttribute('data-day');
             calculateDayHours(day);
         }
         
@@ -1014,9 +995,19 @@
             const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
             const sicknoteChecked = row.querySelector('input[name="sicknote"]').checked;
             
-            // Se for folga, considerar 8 horas trabalhadas
+            // Obter o dia da semana
+            const date = new Date(year, month, parseInt(day));
+            const dayOfWeek = date.getDay();
+            
+            // Definir jornada padrão: Seg-Qui: 9h, Sex: 8h
+            let jornadaPadraoMinutos = 480; // 8 horas padrão
+            if (dayOfWeek >= 1 && dayOfWeek <= 4) { // Segunda a Quinta
+                jornadaPadraoMinutos = 540; // 9 horas
+            }
+            
+            // Se for folga, considerar horas da jornada padrão
             if (dayoffChecked) {
-                row.querySelector('.total-cell').textContent = '08:00';
+                row.querySelector('.total-cell').textContent = minutesToTime(jornadaPadraoMinutos);
                 row.querySelector('.overtime-cell').textContent = '00:00';
                 calculateMonthlyTotals();
                 return;
@@ -1036,9 +1027,9 @@
             const intervaloFim = row.querySelector('input[name="intervalo-fim"]').value;
             const saida = row.querySelector('input[name="saida"]').value;
             
-            // Se for viagem, considerar 8 horas trabalhadas independentemente do horário
+            // Se for viagem, considerar horas da jornada padrão
             if (travelChecked && entrada && saida) {
-                row.querySelector('.total-cell').textContent = '08:00';
+                row.querySelector('.total-cell').textContent = minutesToTime(jornadaPadraoMinutos);
                 row.querySelector('.overtime-cell').textContent = '00:00';
                 calculateMonthlyTotals();
                 return;
@@ -1046,11 +1037,9 @@
             
             // CALCULAR APENAS SE ENTRADA E SAÍDA ESTIVEREM PREENCHIDAS
             if (entrada && saida) {
-                // Converter para minutos
                 const entradaMin = timeToMinutes(entrada);
                 const saidaMin = timeToMinutes(saida);
                 
-                // Validar se os horários são lógicos
                 if (saidaMin <= entradaMin) {
                     showNotification('Horário de saída deve ser após a entrada', 'error');
                     resetRow(row);
@@ -1059,17 +1048,12 @@
                 
                 let horasTrabalhadasMin = 0;
                 
-                // Se NÃO houver intervalo informado, considerar apenas entrada e saída
                 if (!intervaloInicio && !intervaloFim) {
                     horasTrabalhadasMin = saidaMin - entradaMin;
-                }
-                // Se intervalo estiver parcialmente preenchido, considerar sem intervalo
-                else if (!intervaloInicio || !intervaloFim) {
+                } else if (!intervaloInicio || !intervaloFim) {
                     horasTrabalhadasMin = saidaMin - entradaMin;
                     showNotification('Intervalo incompleto - considerando sem intervalo', 'error');
-                }
-                // Se intervalo estiver completamente preenchido
-                else {
+                } else {
                     const intervaloInicioMin = timeToMinutes(intervaloInicio);
                     const intervaloFimMin = timeToMinutes(intervaloFim);
                     
@@ -1079,32 +1063,21 @@
                         return;
                     }
                     
-                    // Verificar se o intervalo está dentro do período de trabalho
-                    if (intervaloInicioMin < entradaMin || intervaloFimMin > saidaMin) {
-                        showNotification('Intervalo deve estar dentro do período de trabalho', 'error');
-                        resetRow(row);
-                        return;
-                    }
-                    
-                    // Calcular horas trabalhadas EXCLUINDO o intervalo de almoço
                     horasTrabalhadasMin = (intervaloInicioMin - entradaMin) + (saidaMin - intervaloFimMin);
                 }
                 
-                // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
-                const horasExtrasMin = Math.max(0, horasTrabalhadasMin - 480);
+                // Calcular horas extras considerando jornada específica do dia
+                const horasExtrasMin = Math.max(0, horasTrabalhadasMin - jornadaPadraoMinutos);
                 const horasNormaisMin = horasTrabalhadasMin - horasExtrasMin;
                 
-                // Atualizar totais do dia
                 row.querySelector('.total-cell').textContent = minutesToTime(horasNormaisMin);
                 row.querySelector('.overtime-cell').textContent = minutesToTime(horasExtrasMin);
                 
             } else {
-                // SE ALGUM CAMPO ESTIVER FALTANDO, ZERAR OS TOTAIS
                 row.querySelector('.total-cell').textContent = '00:00';
                 row.querySelector('.overtime-cell').textContent = '00:00';
             }
             
-            // Recalcular totais do mês
             calculateMonthlyTotals();
         }
         
@@ -1119,7 +1092,7 @@
             row.querySelector('.overtime-cell').textContent = '00:00';
         }
         
-        // Calcular totais mensais - FUNÇÃO CORRIGIDA
+        // Calcular totais mensais
         function calculateMonthlyTotals() {
             let totalMinutes = 0;
             let totalOvertimeMinutes = 0;
@@ -1128,7 +1101,6 @@
             let dayoffDays = 0;
             let sicknoteDays = 0;
             
-            // Encontrar todos os totais diários
             const rows = document.querySelectorAll('#timeSheet tbody tr');
             
             rows.forEach(row => {
@@ -1138,40 +1110,35 @@
                 const isDayOff = row.querySelector('input[name="dayoff"]').checked;
                 const isSicknote = row.querySelector('input[name="sicknote"]').checked;
                 
-                // Se for viagem, folga ou atestado, verificar se está marcado
                 if (isTravel) {
                     travelDays++;
-                    // Só adiciona horas se a viagem estiver marcada
-                    if (isTravel) {
-                        totalMinutes += 480; // 8 horas em minutos
-                        daysWorked++;
-                    }
+                    const day = row.querySelector('input[name="entrada"]').getAttribute('data-day');
+                    const date = new Date(year, month, parseInt(day));
+                    const dayOfWeek = date.getDay();
+                    let jornadaMinutos = 480;
+                    if (dayOfWeek >= 1 && dayOfWeek <= 4) jornadaMinutos = 540;
+                    totalMinutes += jornadaMinutos;
+                    daysWorked++;
                 } else if (isDayOff) {
                     dayoffDays++;
-                    // Só adiciona horas se a folga estiver marcada
-                    if (isDayOff) {
-                        totalMinutes += 480; // 8 horas em minutos
-                        daysWorked++;
-                    }
+                    const day = row.querySelector('input[name="entrada"]').getAttribute('data-day');
+                    const date = new Date(year, month, parseInt(day));
+                    const dayOfWeek = date.getDay();
+                    let jornadaMinutos = 480;
+                    if (dayOfWeek >= 1 && dayOfWeek <= 4) jornadaMinutos = 540;
+                    totalMinutes += jornadaMinutos;
+                    daysWorked++;
                 } else if (isSicknote) {
                     sicknoteDays++;
-                    // Para atestado, não adiciona horas trabalhadas
-                    // Mas conta como dia trabalhado se estiver marcado
-                    if (isSicknote) {
-                        daysWorked++;
-                    }
                 } else if (totalCell.textContent !== '00:00') {
-                    // Para dias normais, adiciona as horas calculadas
                     totalMinutes += timeToMinutes(totalCell.textContent);
                     totalOvertimeMinutes += timeToMinutes(overtimeCell.textContent);
                     daysWorked++;
                 }
             });
             
-            // Calcular média diária
             const dailyAverage = daysWorked > 0 ? Math.round(totalMinutes / daysWorked) : 0;
             
-            // Atualizar totais mensais
             document.getElementById('totalHours').textContent = minutesToTime(totalMinutes);
             document.getElementById('totalOvertime').textContent = minutesToTime(totalOvertimeMinutes);
             document.getElementById('daysWorked').textContent = daysWorked;
@@ -1180,7 +1147,6 @@
             document.getElementById('sicknoteDays').textContent = sicknoteDays;
             document.getElementById('dailyAverage').textContent = minutesToTime(dailyAverage);
             
-            // Atualizar status
             const statusElement = document.getElementById('status');
             if (daysWorked === 0) {
                 statusElement.textContent = "Não iniciado";
@@ -1220,7 +1186,6 @@
                     data[`${fieldName}_${day}`] = value;
                 });
                 
-                // Adicionar totais ao objeto de dados
                 data['totalHours'] = document.getElementById('totalHours').textContent;
                 data['totalOvertime'] = document.getElementById('totalOvertime').textContent;
                 data['daysWorked'] = document.getElementById('daysWorked').textContent;
@@ -1229,20 +1194,17 @@
                 data['sicknoteDays'] = document.getElementById('sicknoteDays').textContent;
                 data['lastUpdate'] = new Date().toISOString();
                 
-                // Salvar no Firebase
                 const ref = database.ref(`folha_ponto/${employee}/SETEMBRO_2025`);
                 ref.set(data)
                     .then(() => {
-                        showNotification('Dados salvos com sucesso no Firebase!', 'success');
+                        showNotification('Dados salvos com sucesso!', 'success');
                     })
                     .catch((error) => {
-                        console.error('Erro ao salvar dados:', error);
-                        showNotification('Erro ao salvar dados: ' + error.message, 'error');
+                        showNotification('Erro ao salvar: ' + error.message, 'error');
                     });
                     
             } catch (error) {
-                console.error('Erro no processo de salvamento:', error);
-                showNotification('Erro no processo de salvamento: ' + error.message, 'error');
+                showNotification('Erro no salvamento: ' + error.message, 'error');
             }
         }
         
@@ -1257,7 +1219,6 @@
                         if (snapshot.exists()) {
                             const data = snapshot.val();
                             
-                            // Preencher os campos de entrada
                             for (const key in data) {
                                 if (key.startsWith('entrada_') || key.startsWith('intervalo-inicio_') || 
                                     key.startsWith('intervalo-fim_') || key.startsWith('saida_') ||
@@ -1270,16 +1231,8 @@
                                     if (input) {
                                         if (input.type === 'checkbox') {
                                             input.checked = data[key];
-                                            // Aplicar classes se necessário
                                             if (data[key]) {
-                                                const row = input.closest('tr');
-                                                if (fieldName === 'travel') {
-                                                    row.classList.add('travel-day');
-                                                } else if (fieldName === 'dayoff') {
-                                                    row.classList.add('day-off');
-                                                } else if (fieldName === 'sicknote') {
-                                                    row.classList.add('sicknote-day');
-                                                }
+                                                handleDayOptionChange(day);
                                             }
                                         } else {
                                             input.value = data[key];
@@ -1288,33 +1241,21 @@
                                 }
                             }
                             
-                            // Recalcular todos os dias preenchidos
-                            recalculateAllDays();
+                            // Recalcular todos os dias
+                            for (let day = 1; day <= daysInMonth; day++) {
+                                calculateDayHours(day);
+                            }
                             
-                            showNotification('Dados carregados com sucesso!', 'success');
-                        } else {
-                            showNotification('Nenhum dado salvo encontrado para este funcionário.', 'error');
+                            showNotification('Dados carregados!', 'success');
                         }
                     })
                     .catch((error) => {
-                        console.error('Erro ao carregar dados:', error);
-                        showNotification('Erro ao carregar dados: ' + error.message, 'error');
+                        console.log('Nenhum dado salvo encontrado');
                     });
                     
             } catch (error) {
-                console.error('Erro no processo de carregamento:', error);
-                showNotification('Erro no processo de carregamento: ' + error.message, 'error');
+                console.log('Erro no carregamento');
             }
-        }
-        
-        // Recalcular todos os dias
-        function recalculateAllDays() {
-            const rows = document.querySelectorAll('#timeSheet tbody tr');
-            
-            rows.forEach(row => {
-                const day = row.querySelector('input[name="entrada"]').getAttribute('data-day');
-                calculateDayHours(day);
-            });
         }
         
         // Limpar dados
@@ -1324,7 +1265,6 @@
                 inputs.forEach(input => {
                     if (input.type === 'checkbox') {
                         input.checked = false;
-                        // Remover classes de estilo
                         const row = input.closest('tr');
                         row.classList.remove('travel-day', 'day-off', 'sicknote-day');
                     } else {
@@ -1338,7 +1278,7 @@
                 });
                 
                 calculateMonthlyTotals();
-                showNotification('Dados limpos com sucesso!', 'success');
+                showNotification('Dados limpos!', 'success');
             }
         }
         
@@ -1347,19 +1287,11 @@
             try {
                 const employee = document.getElementById('employee').value;
                 const exportFormat = document.getElementById('exportFormat').value;
-                const includeSignatures = document.getElementById('includeSignatures').value === 'yes';
                 
-                // Preparar dados para exportação
                 let data = [];
+                data.push(['DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 'FIM INTERVALO', 'SAÍDA', 'VIAGEM', 'FOLGA', 'ATESTADO', 'TOTAL DIÁRIO', 'HORA EXTRA']);
+                
                 const rows = document.querySelectorAll('#timeSheet tbody tr');
-                
-                // Cabeçalhos
-                data.push([
-                    'DATA', 'DIA', 'ENTRADA', 'INÍCIO INTERVALO', 
-                    'FIM INTERVALO', 'SAÍDA', 'VIAGEM', 'FOLGA', 'ATESTADO', 'TOTAL DIÁRIO', 'HORA EXTRA'
-                ]);
-                
-                // Dados das linhas
                 rows.forEach(row => {
                     const cells = row.querySelectorAll('td');
                     const rowData = [
@@ -1378,55 +1310,22 @@
                     data.push(rowData);
                 });
                 
-                // Adicionar totais
                 data.push([]);
                 data.push(['RESUMO MENSAL', '']);
                 data.push(['Total de Horas Trabalhadas:', document.getElementById('totalHours').textContent]);
                 data.push(['Total de Horas Extras:', document.getElementById('totalOvertime').textContent]);
                 data.push(['Dias Trabalhados:', document.getElementById('daysWorked').textContent]);
-                data.push(['Dias de Viagem:', document.getElementById('travelDays').textContent]);
-                data.push(['Dias de Folga:', document.getElementById('dayoffDays').textContent]);
-                data.push(['Dias com Atestado:', document.getElementById('sicknoteDays').textContent]);
-                data.push(['Média Diária:', document.getElementById('dailyAverage').textContent]);
                 
-                // Adicionar assinaturas se solicitado
-                if (includeSignatures) {
-                    data.push([]);
-                    data.push(['ASSINATURAS', '']);
-                    data.push(['Empregador(a):', '']);
-                    data.push(['', '']);
-                    data.push(['Empregado(a):', '']);
-                }
-                
-                // Criar workbook
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Folha de Ponto");
                 
-                // Gerar nome do arquivo
                 const fileName = `Folha_Ponto_${employee}_Setembro_2025.${exportFormat}`;
+                XLSX.writeFile(wb, fileName);
                 
-                // Exportar
-                if (exportFormat === 'xlsx') {
-                    XLSX.writeFile(wb, fileName);
-                } else {
-                    // CSV
-                    const csvContent = XLSX.utils.sheet_to_csv(ws);
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement("a");
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute("href", url);
-                    link.setAttribute("download", fileName);
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                }
-                
-                showNotification('Exportação realizada com sucesso!', 'success');
+                showNotification('Exportação realizada!', 'success');
                 
             } catch (error) {
-                console.error('Erro na exportação:', error);
                 showNotification('Erro na exportação: ' + error.message, 'error');
             }
         }
@@ -1442,18 +1341,10 @@
             }, 3000);
         }
         
-        // Verificação de erros de carregamento
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error("Erro: " + msg + "\nURL: " + url + "\nLinha: " + lineNo);
-            showNotification('Erro no carregamento da página. Verifique o console para detalhes.', 'error');
-            return false;
-        };
-        
-        // Verificar se o Firebase foi carregado corretamente
+        // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof firebase === 'undefined') {
-                showNotification('Erro: Firebase não foi carregado corretamente. Verifique a conexão com a internet.', 'error');
-            }
+            // Já vai mostrar o modal de login automaticamente
+            console.log('Sistema de Folha de Ponto carregado');
         });
     </script>
 </body>
