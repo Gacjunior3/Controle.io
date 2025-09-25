@@ -935,7 +935,7 @@
             setupInputListeners();
         }
         
-        // Configurar listeners para os campos de tempo - FUNÇÃO CORRIGIDA
+        // Configurar listeners para os campos de tempo
         function setupInputListeners() {
             const timeInputs = document.querySelectorAll('input[type="time"]');
             timeInputs.forEach(input => {
@@ -983,16 +983,14 @@
                 row.querySelector('input[name="travel"]').checked = false;
                 row.querySelector('input[name="sicknote"]').checked = false;
                 // Para folga, considerar 8 horas trabalhadas
-                row.querySelector('.total-cell').textContent = '08:00';
-                row.querySelector('.overtime-cell').textContent = '00:00';
+                calculateDayHours(day);
             } else if (isSicknote) {
                 row.classList.add('sicknote-day');
                 // Desmarcar outras opções se atestado estiver marcada
                 row.querySelector('input[name="travel"]').checked = false;
                 row.querySelector('input[name="dayoff"]').checked = false;
                 // Para atestado, considerar 0 horas trabalhadas
-                row.querySelector('.total-cell').textContent = '00:00';
-                row.querySelector('.overtime-cell').textContent = '00:00';
+                calculateDayHours(day);
             } else {
                 // Se nenhuma opção estiver marcada, recalcular baseado nos horários
                 calculateDayHours(day);
@@ -1016,7 +1014,7 @@
             const dayoffChecked = row.querySelector('input[name="dayoff"]').checked;
             const sicknoteChecked = row.querySelector('input[name="sicknote"]').checked;
             
-            // Se for folga ou atestado, usar valores fixos
+            // Se for folga, considerar 8 horas trabalhadas
             if (dayoffChecked) {
                 row.querySelector('.total-cell').textContent = '08:00';
                 row.querySelector('.overtime-cell').textContent = '00:00';
@@ -1024,6 +1022,7 @@
                 return;
             }
             
+            // Se for atestado, considerar 0 horas trabalhadas
             if (sicknoteChecked) {
                 row.querySelector('.total-cell').textContent = '00:00';
                 row.querySelector('.overtime-cell').textContent = '00:00';
@@ -1058,11 +1057,19 @@
                     return;
                 }
                 
-                let horasTrabalhadasMin = saidaMin - entradaMin;
-                let intervaloMin = 0;
+                let horasTrabalhadasMin = 0;
                 
-                // Calcular intervalo se informado (pausa para almoço)
-                if (intervaloInicio && intervaloFim) {
+                // Se NÃO houver intervalo informado, considerar apenas entrada e saída
+                if (!intervaloInicio && !intervaloFim) {
+                    horasTrabalhadasMin = saidaMin - entradaMin;
+                }
+                // Se intervalo estiver parcialmente preenchido, considerar sem intervalo
+                else if (!intervaloInicio || !intervaloFim) {
+                    horasTrabalhadasMin = saidaMin - entradaMin;
+                    showNotification('Intervalo incompleto - considerando sem intervalo', 'error');
+                }
+                // Se intervalo estiver completamente preenchido
+                else {
                     const intervaloInicioMin = timeToMinutes(intervaloInicio);
                     const intervaloFimMin = timeToMinutes(intervaloFim);
                     
@@ -1079,8 +1086,8 @@
                         return;
                     }
                     
-                    intervaloMin = intervaloFimMin - intervaloInicioMin;
-                    horasTrabalhadasMin -= intervaloMin;
+                    // Calcular horas trabalhadas EXCLUINDO o intervalo de almoço
+                    horasTrabalhadasMin = (intervaloInicioMin - entradaMin) + (saidaMin - intervaloFimMin);
                 }
                 
                 // Calcular horas extras (considerando jornada de 8 horas = 480 minutos)
@@ -1112,7 +1119,7 @@
             row.querySelector('.overtime-cell').textContent = '00:00';
         }
         
-        // Calcular totais mensais
+        // Calcular totais mensais - FUNÇÃO CORRIGIDA
         function calculateMonthlyTotals() {
             let totalMinutes = 0;
             let totalOvertimeMinutes = 0;
@@ -1131,19 +1138,30 @@
                 const isDayOff = row.querySelector('input[name="dayoff"]').checked;
                 const isSicknote = row.querySelector('input[name="sicknote"]').checked;
                 
+                // Se for viagem, folga ou atestado, verificar se está marcado
                 if (isTravel) {
                     travelDays++;
-                    totalMinutes += 480; // 8 horas em minutos
-                    daysWorked++;
+                    // Só adiciona horas se a viagem estiver marcada
+                    if (isTravel) {
+                        totalMinutes += 480; // 8 horas em minutos
+                        daysWorked++;
+                    }
                 } else if (isDayOff) {
                     dayoffDays++;
-                    totalMinutes += 480; // 8 horas em minutos
-                    daysWorked++;
+                    // Só adiciona horas se a folga estiver marcada
+                    if (isDayOff) {
+                        totalMinutes += 480; // 8 horas em minutos
+                        daysWorked++;
+                    }
                 } else if (isSicknote) {
                     sicknoteDays++;
                     // Para atestado, não adiciona horas trabalhadas
-                    daysWorked++;
+                    // Mas conta como dia trabalhado se estiver marcado
+                    if (isSicknote) {
+                        daysWorked++;
+                    }
                 } else if (totalCell.textContent !== '00:00') {
+                    // Para dias normais, adiciona as horas calculadas
                     totalMinutes += timeToMinutes(totalCell.textContent);
                     totalOvertimeMinutes += timeToMinutes(overtimeCell.textContent);
                     daysWorked++;
@@ -1289,7 +1307,7 @@
             }
         }
         
-        // Recalcular todos os dias - FUNÇÃO CORRIGIDA
+        // Recalcular todos os dias
         function recalculateAllDays() {
             const rows = document.querySelectorAll('#timeSheet tbody tr');
             
