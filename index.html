@@ -461,6 +461,19 @@
             width: 100%;
         }
         
+        /* NEW: Print header styles */
+        .print-header {
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-bottom: 2px solid #333;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
         @media print {
             body {
                 padding: 0;
@@ -481,6 +494,11 @@
             
             .user-info, .logout-btn {
                 display: none;
+            }
+            
+            /* NEW: Show print header when printing */
+            .print-header {
+                display: block;
             }
         }
         
@@ -630,6 +648,9 @@
                 </div>
             </header>
             
+            <!-- NEW: Print header element -->
+            <div id="printHeader" class="print-header"></div>
+            
             <div class="controls">
                 <div class="employee-selector">
                     <label for="employee"><i class="fas fa-user"></i> Funcionário:</label>
@@ -643,7 +664,8 @@
                 </div>
                 
                 <div class="actions">
-                    <button class="btn btn-primary" onclick="window.print()">
+                    <!-- MODIFIED: Changed from window.print() to custom function -->
+                    <button class="btn btn-primary" onclick="printWithEmployeeName()">
                         <i class="fas fa-print"></i> Imprimir
                     </button>
                     <button class="btn btn-success" onclick="saveData()">
@@ -1290,6 +1312,20 @@
             } catch (error) {
                 showNotification('Erro na exportação', 'error');
             }
+        }
+        
+        // MODIFIED: New print function with employee name
+        function printWithEmployeeName() {
+            // Get the selected employee name
+            const employeeSelect = document.getElementById('employee');
+            const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+            const employeeName = selectedOption.text;
+            
+            // Update the print header with employee name
+            document.getElementById('printHeader').textContent = `FOLHA DE PONTO - FUNCIONÁRIO: ${employeeName}`;
+            
+            // Trigger the print dialog
+            window.print();
         }
         
         function showNotification(message, type) {
